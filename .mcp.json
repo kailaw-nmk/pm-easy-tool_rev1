@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "drawio": {
+      "command": "npx",
+      "args": ["-y", "drawio-mcp-server", "--editor"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "mcp-sequentialthinking-tools"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\development"]
+    }
+  }
+}
