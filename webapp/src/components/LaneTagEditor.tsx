@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface Props {
   pageId: string;
@@ -9,6 +10,7 @@ interface Props {
 
 export function LaneTagEditor({ pageId, laneId, onClose }: Props) {
   const { data, updateLaneTags } = useScheduleStore();
+  const tc = useThemeColors();
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
 
@@ -60,7 +62,13 @@ export function LaneTagEditor({ pageId, laneId, onClose }: Props) {
             placeholder="タグを入力..."
             style={{ flex: 1 }}
           />
-          <button onClick={handleAdd} className="primary" style={{ padding: '8px 16px', border: '1px solid #1565c0', borderRadius: 4, background: '#1565c0', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={handleAdd} className="primary"
+            style={{
+              padding: '8px 16px',
+              border: `1px solid ${tc.accent}`, borderRadius: 6,
+              background: tc.accent, color: '#fff',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
             追加
           </button>
         </div>

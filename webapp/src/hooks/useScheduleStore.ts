@@ -46,6 +46,7 @@ interface ScheduleState {
   addPage: (name: string, filterTags: string[]) => void;
   removePage: (pageId: string) => void;
   renamePage: (pageId: string, name: string) => void;
+  reorderPage: (pageId: string, direction: 'left' | 'right') => void;
   // Timeline
   updateMonthWidth: (widthPx: number) => void;
   // Undo/Redo
@@ -443,6 +444,23 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page) return;
         page.name = name;
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  reorderPage: (pageId, direction) => {
+    set((state) => {
+      if (!state.data) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const idx = draft.pages.findIndex((p) => p.id === pageId);
+        if (idx < 0) return;
+        const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= draft.pages.length) return;
+        [draft.pages[idx], draft.pages[swapIdx]] = [draft.pages[swapIdx], draft.pages[idx]];
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

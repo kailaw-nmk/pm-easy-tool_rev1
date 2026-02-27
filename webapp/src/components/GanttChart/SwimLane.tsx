@@ -3,6 +3,7 @@ import { ScheduleBarComponent } from './ScheduleBar';
 import { MilestoneComponent } from './Milestone';
 import { LaneResizeHandle } from './LaneResizeHandle';
 import { useUIStore } from '../../hooks/useUIStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   lane: SwimLaneType;
@@ -30,13 +31,14 @@ export function SwimLaneComponent({
   onLaneContextMenu, onTooltipShow, onTooltipHide,
 }: Props) {
   const fontSizeLaneTitle = useUIStore((s) => s.fontSizeLaneTitle);
+  const tc = useThemeColors();
   const labelLines = lane.label.split('\n');
 
   return (
     <g className="swim-lane">
       {/* Lane label */}
       <rect x={0} y={yOffset} width={headerWidth} height={lane.heightPx}
-        fill="#f5f5f5" stroke="#e0e0e0" strokeWidth={1}
+        fill={tc.laneLabelBg} stroke={tc.laneBorder} strokeWidth={1}
         onContextMenu={(e) => {
           e.preventDefault();
           onLaneContextMenu?.(e, lane.id);
@@ -47,7 +49,7 @@ export function SwimLaneComponent({
           x={headerWidth / 2}
           y={yOffset + lane.heightPx / 2 + (i - (labelLines.length - 1) / 2) * (fontSizeLaneTitle + 4)}
           textAnchor="middle" dominantBaseline="central"
-          fontSize={fontSizeLaneTitle} fontWeight="bold" fill="#333"
+          fontSize={fontSizeLaneTitle} fontWeight="bold" fill={tc.laneLabelText}
           style={{ pointerEvents: 'none' }}>
           {line}
         </text>
@@ -59,7 +61,7 @@ export function SwimLaneComponent({
 
       {/* Bottom border */}
       <line x1={0} y1={yOffset + lane.heightPx} x2={totalWidth} y2={yOffset + lane.heightPx}
-        stroke="#e0e0e0" strokeWidth={1} />
+        stroke={tc.laneBorder} strokeWidth={1} />
 
       {/* Bars */}
       {lane.bars.map((bar) => (

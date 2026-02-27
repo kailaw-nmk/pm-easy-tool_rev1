@@ -1,0 +1,10 @@
+{
+  "fontSizeLaneTitle": 8,
+  "fontSizeBarText": 7,
+  "fontSizeMilestone": 7,
+  "zoomLevel": "month",
+  "displayMode": "fixed",
+  "showTooltips": true,
+  "showMemos": true,
+  "themeMode": "light"
+}

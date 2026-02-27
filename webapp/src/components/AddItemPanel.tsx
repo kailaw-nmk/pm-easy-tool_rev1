@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
-import { COLOR_MAP } from '../lib/color-map';
+import { getColorMap } from '../lib/color-map';
+import { useUIStore } from '../hooks/useUIStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 import type { BarColor } from '../types/schedule';
 
 interface Props {
@@ -12,6 +14,9 @@ const BAR_COLORS: BarColor[] = ['blue', 'pink', 'green', 'orange', 'gray', 'purp
 
 export function AddItemPanel({ type, onClose }: Props) {
   const { data, currentPageId, addBar, addMilestone } = useScheduleStore();
+  const themeMode = useUIStore((s) => s.themeMode);
+  const tc = useThemeColors();
+  const colorMap = getColorMap(themeMode);
   const page = data?.pages.find((p) => p.id === currentPageId);
   const timeline = page?.timeline ?? data?.timeline;
   const lanes = page?.swimLanes ?? [];
@@ -89,7 +94,10 @@ export function AddItemPanel({ type, onClose }: Props) {
                   <div
                     key={c}
                     className={`color-swatch ${c === color ? 'selected' : ''}`}
-                    style={{ background: COLOR_MAP[c].fill, borderColor: c === color ? COLOR_MAP[c].stroke : 'transparent' }}
+                    style={{
+                      background: colorMap[c].fill,
+                      borderColor: c === color ? tc.accent : 'transparent',
+                    }}
                     onClick={() => setColor(c)}
                     title={c}
                   />

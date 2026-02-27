@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
-import { COLOR_MAP } from '../lib/color-map';
+import { getColorMap } from '../lib/color-map';
+import { useUIStore } from '../hooks/useUIStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 import type { BarColor } from '../types/schedule';
 
 interface Props {
@@ -14,6 +16,9 @@ const BAR_COLORS: BarColor[] = ['blue', 'pink', 'green', 'orange', 'gray', 'purp
 
 export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
   const { data, updateBar, deleteBar } = useScheduleStore();
+  const themeMode = useUIStore((s) => s.themeMode);
+  const tc = useThemeColors();
+  const colorMap = getColorMap(themeMode);
 
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
@@ -65,7 +70,10 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
               <div
                 key={c}
                 className={`color-swatch ${c === color ? 'selected' : ''}`}
-                style={{ background: COLOR_MAP[c].fill, borderColor: c === color ? COLOR_MAP[c].stroke : 'transparent' }}
+                style={{
+                  background: colorMap[c].fill,
+                  borderColor: c === color ? tc.accent : 'transparent',
+                }}
                 onClick={() => setColor(c)}
                 title={c}
               />
@@ -79,7 +87,12 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
         <div className="field">
           <label>Memo</label>
           <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} placeholder="メモ・補足情報"
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }} />
+            style={{
+              width: '100%', padding: '8px 10px',
+              border: `1px solid ${tc.inputBorder}`, borderRadius: '6px',
+              fontSize: '14px', fontFamily: 'inherit', resize: 'vertical',
+              background: tc.inputBg, color: tc.textPrimary,
+            }} />
         </div>
         <div className="actions">
           <button className="danger" onClick={handleDelete}>Delete</button>

@@ -1,7 +1,47 @@
 import { create } from 'zustand';
 import type { ZoomLevel, DisplayMode } from '../types/schedule';
+import type { ThemeMode } from '../lib/theme';
+import { API_BASE_URL } from '../lib/constants';
 
 type PlacementMode = 'none' | 'bar' | 'milestone';
+
+interface SettingsPayload {
+  fontSizeLaneTitle: number;
+  fontSizeBarText: number;
+  fontSizeMilestone: number;
+  zoomLevel: ZoomLevel;
+  displayMode: DisplayMode;
+  showTooltips: boolean;
+  showMemos: boolean;
+  themeMode: ThemeMode;
+}
+
+function extractSettings(state: UIState): SettingsPayload {
+  return {
+    fontSizeLaneTitle: state.fontSizeLaneTitle,
+    fontSizeBarText: state.fontSizeBarText,
+    fontSizeMilestone: state.fontSizeMilestone,
+    zoomLevel: state.zoomLevel,
+    displayMode: state.displayMode,
+    showTooltips: state.showTooltips,
+    showMemos: state.showMemos,
+    themeMode: state.themeMode,
+  };
+}
+
+let settingsSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSettingsSave(getState: () => UIState) {
+  if (settingsSaveTimer) clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => {
+    const settings = extractSettings(getState());
+    fetch(`${API_BASE_URL}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    }).catch(() => {});
+  }, 1000);
+}
 
 interface UIState {
   showTooltips: boolean;
@@ -13,6 +53,7 @@ interface UIState {
   fontSizeMilestone: number;
   displayMode: DisplayMode;
   containerWidth: number;
+  themeMode: ThemeMode;
   toggleTooltips: () => void;
   toggleMemos: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
@@ -22,9 +63,12 @@ interface UIState {
   setFontSizeMilestone: (size: number) => void;
   setDisplayMode: (mode: DisplayMode) => void;
   setContainerWidth: (width: number) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  toggleTheme: () => void;
+  loadSettings: () => Promise<void>;
 }
 
-export const useUIStore = create<UIState>((set) => ({
+export const useUIStore = create<UIState>((set, get) => ({
   showTooltips: true,
   showMemos: true,
   zoomLevel: 'month',
@@ -34,14 +78,71 @@ export const useUIStore = create<UIState>((set) => ({
   fontSizeMilestone: 7,
   displayMode: 'fixed',
   containerWidth: 0,
+  themeMode: 'light',
 
-  toggleTooltips: () => set((s) => ({ showTooltips: !s.showTooltips })),
-  toggleMemos: () => set((s) => ({ showMemos: !s.showMemos })),
-  setZoomLevel: (level) => set({ zoomLevel: level }),
+  toggleTooltips: () => set((s) => {
+    const next = { showTooltips: !s.showTooltips };
+    setTimeout(() => scheduleSettingsSave(get), 0);
+    return next;
+  }),
+  toggleMemos: () => set((s) => {
+    const next = { showMemos: !s.showMemos };
+    setTimeout(() => scheduleSettingsSave(get), 0);
+    return next;
+  }),
+  setZoomLevel: (level) => {
+    set({ zoomLevel: level });
+    scheduleSettingsSave(get);
+  },
   setPlacementMode: (mode) => set({ placementMode: mode }),
-  setFontSizeLaneTitle: (size) => set({ fontSizeLaneTitle: size }),
-  setFontSizeBarText: (size) => set({ fontSizeBarText: size }),
-  setFontSizeMilestone: (size) => set({ fontSizeMilestone: size }),
-  setDisplayMode: (mode) => set({ displayMode: mode }),
+  setFontSizeLaneTitle: (size) => {
+    set({ fontSizeLaneTitle: size });
+    scheduleSettingsSave(get);
+  },
+  setFontSizeBarText: (size) => {
+    set({ fontSizeBarText: size });
+    scheduleSettingsSave(get);
+  },
+  setFontSizeMilestone: (size) => {
+    set({ fontSizeMilestone: size });
+    scheduleSettingsSave(get);
+  },
+  setDisplayMode: (mode) => {
+    set({ displayMode: mode });
+    scheduleSettingsSave(get);
+  },
   setContainerWidth: (width) => set({ containerWidth: width }),
+  setThemeMode: (mode) => {
+    try { localStorage.setItem('tos-theme', mode); } catch {}
+    set({ themeMode: mode });
+    scheduleSettingsSave(get);
+  },
+  toggleTheme: () => set((s) => {
+    const next = s.themeMode === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem('tos-theme', next); } catch {}
+    setTimeout(() => scheduleSettingsSave(get), 0);
+    return { themeMode: next };
+  }),
+
+  loadSettings: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings`);
+      if (!res.ok) return;
+      const settings = await res.json();
+      set({
+        fontSizeLaneTitle: settings.fontSizeLaneTitle ?? 8,
+        fontSizeBarText: settings.fontSizeBarText ?? 7,
+        fontSizeMilestone: settings.fontSizeMilestone ?? 7,
+        zoomLevel: settings.zoomLevel ?? 'month',
+        displayMode: settings.displayMode ?? 'fixed',
+        showTooltips: settings.showTooltips ?? true,
+        showMemos: settings.showMemos ?? true,
+        themeMode: settings.themeMode ?? 'light',
+      });
+      // Sync theme to localStorage
+      if (settings.themeMode) {
+        try { localStorage.setItem('tos-theme', settings.themeMode); } catch {}
+      }
+    } catch {}
+  },
 }));

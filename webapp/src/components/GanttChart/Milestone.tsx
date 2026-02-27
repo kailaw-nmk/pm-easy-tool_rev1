@@ -3,6 +3,7 @@ import type { Milestone, PageTimeline, ZoomLevel } from '../../types/schedule';
 import { itemX, xToDate, type PositionContext } from '../../lib/position';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   milestone: Milestone;
@@ -31,6 +32,7 @@ export function MilestoneComponent({
 }: Props) {
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
   const fontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
+  const tc = useThemeColors();
 
   const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
 
@@ -136,7 +138,7 @@ export function MilestoneComponent({
           width={timeline.monthWidthPx}
           height={textHeight}
           fill="none"
-          stroke="#1565c0"
+          stroke={tc.selectionStroke}
           strokeWidth={2}
           strokeDasharray="4 2"
           rx={2}
@@ -154,7 +156,7 @@ export function MilestoneComponent({
           dominantBaseline="central"
           fontSize={fontSizeMilestone}
           fontWeight="bold"
-          fill="#d32f2f"
+          fill={tc.milestoneText}
           style={{ userSelect: 'none' }}
         >
           {line}
@@ -167,7 +169,7 @@ export function MilestoneComponent({
           x={renderX + timeline.monthWidthPx - 10}
           y={renderY + 8}
           fontSize={8}
-          fill="#666"
+          fill={tc.memoIcon}
           pointerEvents="none"
           style={{ userSelect: 'none' }}
         >

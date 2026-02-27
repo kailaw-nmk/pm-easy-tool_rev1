@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 import { AddScheduleDialog } from './AddScheduleDialog';
 
 interface TabContextMenu {
@@ -9,7 +10,8 @@ interface TabContextMenu {
 }
 
 export function PageTabs() {
-  const { data, currentPageId, setCurrentPage, removePage, renamePage } = useScheduleStore();
+  const { data, currentPageId, setCurrentPage, removePage, renamePage, reorderPage } = useScheduleStore();
+  const tc = useThemeColors();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [contextMenu, setContextMenu] = useState<TabContextMenu | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -43,6 +45,18 @@ export function PageTabs() {
     }
   }, [handleRenameSubmit]);
 
+  const handleMoveLeft = useCallback(() => {
+    if (!contextMenu) return;
+    reorderPage(contextMenu.pageId, 'left');
+    setContextMenu(null);
+  }, [contextMenu, reorderPage]);
+
+  const handleMoveRight = useCallback(() => {
+    if (!contextMenu) return;
+    reorderPage(contextMenu.pageId, 'right');
+    setContextMenu(null);
+  }, [contextMenu, reorderPage]);
+
   const handleDelete = useCallback(() => {
     if (!contextMenu) return;
     removePage(contextMenu.pageId);
@@ -52,6 +66,9 @@ export function PageTabs() {
   if (!data) return null;
 
   const canDelete = data.pages.length > 1;
+  const contextPageIdx = contextMenu ? data.pages.findIndex((p) => p.id === contextMenu.pageId) : -1;
+  const canMoveLeft = contextPageIdx > 0;
+  const canMoveRight = contextPageIdx >= 0 && contextPageIdx < data.pages.length - 1;
 
   return (
     <>
@@ -73,13 +90,14 @@ export function PageTabs() {
                 onClick={(e) => e.stopPropagation()}
                 autoFocus
                 style={{
-                  border: '1px solid #1565c0',
-                  borderRadius: 2,
-                  padding: '2px 4px',
+                  border: `1px solid ${tc.accent}`,
+                  borderRadius: 4,
+                  padding: '2px 6px',
                   fontSize: 13,
                   fontFamily: 'inherit',
                   width: 120,
-                  background: '#fff',
+                  background: tc.inputBg,
+                  color: tc.textPrimary,
                 }}
               />
             ) : (
@@ -102,6 +120,8 @@ export function PageTabs() {
           className="context-menu"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
+          <button onClick={handleMoveLeft} disabled={!canMoveLeft}>左に移動</button>
+          <button onClick={handleMoveRight} disabled={!canMoveRight}>右に移動</button>
           <button onClick={handleRename}>名前変更</button>
           <button
             className="danger"

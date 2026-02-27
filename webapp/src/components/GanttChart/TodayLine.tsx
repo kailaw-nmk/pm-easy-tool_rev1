@@ -1,6 +1,7 @@
 import type { PageTimeline, ZoomLevel } from '../../types/schedule';
 import { monthToX, todayYearMonth, todayYearMonthDay, dateToXDay } from '../../lib/date-utils';
 import { getDayWidth } from '../../lib/zoom';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   timeline: PageTimeline;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function TodayLine({ timeline, headerWidth, chartHeight, zoomLevel = 'month', region = 'full' }: Props) {
+  const tc = useThemeColors();
   let x: number;
 
   if (zoomLevel === 'day') {
@@ -34,7 +36,7 @@ export function TodayLine({ timeline, headerWidth, chartHeight, zoomLevel = 'mon
           y1={region === 'full' ? 20 : 0}
           x2={x}
           y2={chartHeight}
-          stroke="#e53935"
+          stroke={tc.todayLineColor}
           strokeWidth={2}
           strokeDasharray="4 2"
           opacity={0.7}
@@ -47,7 +49,7 @@ export function TodayLine({ timeline, headerWidth, chartHeight, zoomLevel = 'mon
           y={14}
           textAnchor="middle"
           fontSize={7}
-          fill="#e53935"
+          fill={tc.todayLineColor}
           fontWeight="bold"
         >
           Today

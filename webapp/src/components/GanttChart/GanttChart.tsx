@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useSelectionStore } from '../../hooks/useSelectionStore';
 import { useUIStore } from '../../hooks/useUIStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { TimelineHeader } from './TimelineHeader';
 import { SwimLaneComponent } from './SwimLane';
 import { TodayLine } from './TodayLine';
@@ -30,6 +31,7 @@ export function GanttChart() {
   const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, updateLaneHeight, addBar, addMilestone } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth } = useUIStore();
+  const tc = useThemeColors();
   const [editBar, setEditBar] = useState<{ barId: string; laneId: string } | null>(null);
   const [editMs, setEditMs] = useState<{ msId: string; laneId: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -203,7 +205,7 @@ export function GanttChart() {
         {/* Sticky header SVG */}
         <div className="gantt-header-sticky">
           <svg width={totalWidth} height={headerHeight}>
-            <rect x={0} y={0} width={totalWidth} height={headerHeight} fill="#ffffff" />
+            <rect x={0} y={0} width={totalWidth} height={headerHeight} fill={tc.chartBg} />
             <TimelineHeader timeline={timeline} headerWidth={headerWidth} zoomLevel={zoomLevel} />
             <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={headerHeight} zoomLevel={zoomLevel} region="header" />
           </svg>
@@ -218,7 +220,7 @@ export function GanttChart() {
           onClick={handleSvgClick}
         >
           {/* Background */}
-          <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill="#ffffff" />
+          <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
 
           {/* Swim lanes (y starts from 0) */}
           {page.swimLanes.map((lane, i) => {

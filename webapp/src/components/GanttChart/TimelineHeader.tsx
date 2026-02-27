@@ -3,6 +3,7 @@ import type { PageTimeline, ZoomLevel } from '../../types/schedule';
 import { generateMonthRange, parseYearMonth, monthToQuarter, monthAbbr, daysInMonth } from '../../lib/date-utils';
 import { YEAR_HEADER_Y, QUARTER_HEADER_Y, MONTH_HEADER_Y, YEAR_HEADER_HEIGHT, QUARTER_HEADER_HEIGHT, MONTH_HEADER_HEIGHT } from '../../lib/constants';
 import { getZoomConfig, getDayWidth } from '../../lib/zoom';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   timeline: PageTimeline;
@@ -24,6 +25,7 @@ interface QuarterSpan {
 
 export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: Props) {
   const config = getZoomConfig(zoomLevel);
+  const tc = useThemeColors();
 
   const months = useMemo(
     () => generateMonthRange(timeline.startDate, timeline.endDate),
@@ -102,9 +104,9 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
     <g className="timeline-header">
       {/* "日程" label */}
       <rect x={0} y={YEAR_HEADER_Y} width={headerWidth} height={totalHeaderHeight}
-        fill="#f5f5f5" stroke="#e0e0e0" strokeWidth={1} />
+        fill={tc.headerBg} stroke={tc.laneBorder} strokeWidth={1} />
       <text x={headerWidth / 2} y={YEAR_HEADER_Y + totalHeaderHeight / 2}
-        textAnchor="middle" dominantBaseline="central" fontSize={8} fontWeight="bold" fill="#333">
+        textAnchor="middle" dominantBaseline="central" fontSize={8} fontWeight="bold" fill={tc.textPrimary}>
         日程
       </text>
 
@@ -114,9 +116,9 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
         return (
           <g key={`year-${ys.year}`}>
             <rect x={ys.startX} y={yPos} width={ys.width} height={YEAR_HEADER_HEIGHT}
-              fill="#e3f2fd" stroke="#90caf9" strokeWidth={1} />
+              fill={tc.headerAccentBg} stroke={tc.headerAccentStroke} strokeWidth={1} />
             <text x={ys.startX + ys.width / 2} y={yPos + YEAR_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold" fill="#1565c0">
+              textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold" fill={tc.headerAccentText}>
               {ys.year}年
             </text>
           </g>
@@ -129,9 +131,9 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
         return (
           <g key={`q-${i}`}>
             <rect x={qs.startX} y={yPos} width={qs.width} height={QUARTER_HEADER_HEIGHT}
-              fill="#bbdefb" stroke="#90caf9" strokeWidth={1} />
+              fill={tc.headerQuarterBg} stroke={tc.headerAccentStroke} strokeWidth={1} />
             <text x={qs.startX + qs.width / 2} y={yPos + QUARTER_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight="bold" fill="#1565c0">
+              textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight="bold" fill={tc.headerAccentText}>
               {qs.label}
             </text>
           </g>
@@ -159,9 +161,9 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
         return (
           <g key={`month-${m}`}>
             <rect x={x} y={yPos} width={w} height={MONTH_HEADER_HEIGHT}
-              fill="#e3f2fd" stroke="#bbdefb" strokeWidth={1} />
+              fill={tc.headerMonthBg} stroke={tc.headerDayStroke} strokeWidth={1} />
             <text x={x + w / 2} y={yPos + MONTH_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={8} fill="#333">
+              textAnchor="middle" dominantBaseline="central" fontSize={8} fill={tc.textSecondary}>
               {monthAbbr(month)}
             </text>
           </g>
@@ -184,9 +186,9 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
             elements.push(
               <g key={`day-${m}-${d}`}>
                 <rect x={x} y={yPos} width={dayWidth} height={MONTH_HEADER_HEIGHT}
-                  fill={d % 2 === 0 ? '#f0f7ff' : '#e3f2fd'} stroke="#bbdefb" strokeWidth={0.5} />
+                  fill={d % 2 === 0 ? tc.headerDayEvenBg : tc.headerDayOddBg} stroke={tc.headerDayStroke} strokeWidth={0.5} />
                 <text x={x + dayWidth / 2} y={yPos + MONTH_HEADER_HEIGHT / 2}
-                  textAnchor="middle" dominantBaseline="central" fontSize={7} fill="#666">
+                  textAnchor="middle" dominantBaseline="central" fontSize={7} fill={tc.textSecondary}>
                   {d}
                 </text>
               </g>

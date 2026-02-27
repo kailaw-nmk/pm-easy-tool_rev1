@@ -10,7 +10,7 @@ import type { ZoomLevel, DisplayMode } from '../types/schedule';
 
 export function Toolbar() {
   const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane } = useScheduleStore();
-  const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode } = useUIStore();
+  const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
@@ -142,6 +142,13 @@ export function Toolbar() {
           </button>
           {showSettings && <SettingsPopover />}
         </div>
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={themeMode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'}
+        >
+          {themeMode === 'light' ? '🌙' : '☀️'}
+        </button>
         <div className="separator" />
         <button onClick={() => handleExport('png')}>PNG</button>
         <button onClick={() => handleExport('pdf')}>PDF</button>

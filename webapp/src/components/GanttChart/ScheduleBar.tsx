@@ -1,11 +1,12 @@
 import { useRef, useCallback, useState } from 'react';
 import type { ScheduleBar, PageTimeline, ZoomLevel } from '../../types/schedule';
-import { COLOR_MAP } from '../../lib/color-map';
+import { getColorMap } from '../../lib/color-map';
 import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay } from '../../lib/date-utils';
 import { itemX, itemWidth, xToDate, type PositionContext } from '../../lib/position';
 import { BAR_BORDER_RADIUS, MIN_BAR_HEIGHT } from '../../lib/constants';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   bar: ScheduleBar;
@@ -38,6 +39,8 @@ export function ScheduleBarComponent({
 }: Props) {
   const updateBar = useScheduleStore((s) => s.updateBar);
   const fontSizeBarText = useUIStore((s) => s.fontSizeBarText);
+  const themeMode = useUIStore((s) => s.themeMode);
+  const tc = useThemeColors();
 
   const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
 
@@ -54,7 +57,8 @@ export function ScheduleBarComponent({
 
   const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0, dw: 0, dh: 0 });
 
-  const colors = COLOR_MAP[bar.color];
+  const colorMap = getColorMap(themeMode);
+  const colors = colorMap[bar.color];
   const baseX = itemX(bar.startMonth, posCtx);
   const baseWidth = itemWidth(bar.startMonth, bar.endMonth, posCtx);
   const baseY = laneY + bar.yOffsetInLane;
@@ -214,7 +218,7 @@ export function ScheduleBarComponent({
           rx={BAR_BORDER_RADIUS + 1}
           ry={BAR_BORDER_RADIUS + 1}
           fill="none"
-          stroke="#1565c0"
+          stroke={tc.selectionStroke}
           strokeWidth={2}
           strokeDasharray="4 2"
           pointerEvents="none"
@@ -265,7 +269,7 @@ export function ScheduleBarComponent({
           x={renderX + renderWidth - 10}
           y={renderY + 8}
           fontSize={8}
-          fill="#666"
+          fill={tc.memoIcon}
           pointerEvents="none"
           style={{ userSelect: 'none' }}
         >

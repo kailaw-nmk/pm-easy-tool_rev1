@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface Props {
   onClose: () => void;
@@ -7,6 +8,7 @@ interface Props {
 
 export function LaneRegistryPanel({ onClose }: Props) {
   const { data, updateRegistryTemplate, addRegistryTemplate, removeRegistryTemplate } = useScheduleStore();
+  const tc = useThemeColors();
   const registry = data?.laneRegistry ?? [];
 
   const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
@@ -67,7 +69,12 @@ export function LaneRegistryPanel({ onClose }: Props) {
                     type="text"
                     value={tmpl.label}
                     onChange={(e) => handleLabelChange(tmpl.id, e.target.value)}
-                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, fontSize: 13, fontFamily: 'inherit' }}
+                    style={{
+                      width: '100%', padding: '4px 6px',
+                      border: `1px solid ${tc.inputBorder}`, borderRadius: 4,
+                      fontSize: 13, fontFamily: 'inherit',
+                      background: tc.inputBg, color: tc.textPrimary,
+                    }}
                   />
                 </td>
                 <td>
@@ -85,7 +92,12 @@ export function LaneRegistryPanel({ onClose }: Props) {
                         onChange={(e) => setTagInputs((prev) => ({ ...prev, [tmpl.id]: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(tmpl.id); } }}
                         placeholder="+追加"
-                        style={{ width: 60, padding: '2px 4px', border: '1px dashed #aaa', borderRadius: 3, fontSize: 11, fontFamily: 'inherit' }}
+                        style={{
+                          width: 60, padding: '2px 4px',
+                          border: `1px dashed ${tc.textMuted}`, borderRadius: 4,
+                          fontSize: 11, fontFamily: 'inherit',
+                          background: 'transparent', color: tc.textPrimary,
+                        }}
                       />
                     </span>
                   </div>
@@ -96,14 +108,24 @@ export function LaneRegistryPanel({ onClose }: Props) {
                     value={tmpl.defaultHeightPx}
                     onChange={(e) => handleHeightChange(tmpl.id, e.target.value)}
                     min={20}
-                    style={{ width: 60, padding: '4px 6px', border: '1px solid #ccc', borderRadius: 3, fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
+                    style={{
+                      width: 60, padding: '4px 6px',
+                      border: `1px solid ${tc.inputBorder}`, borderRadius: 4,
+                      fontSize: 13, fontFamily: 'inherit', textAlign: 'right',
+                      background: tc.inputBg, color: tc.textPrimary,
+                    }}
                   />
                 </td>
                 <td>
                   <button
                     className="danger"
                     onClick={() => removeRegistryTemplate(tmpl.id)}
-                    style={{ padding: '4px 10px', border: '1px solid #c62828', borderRadius: 3, background: 'transparent', color: '#c62828', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                    style={{
+                      padding: '4px 10px',
+                      border: `1px solid ${tc.danger}`, borderRadius: 4,
+                      background: 'transparent', color: tc.danger,
+                      cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
+                    }}
                   >
                     削除
                   </button>
@@ -115,7 +137,12 @@ export function LaneRegistryPanel({ onClose }: Props) {
 
         <button
           onClick={handleAddTemplate}
-          style={{ marginTop: 12, padding: '6px 16px', border: '1px dashed #1565c0', borderRadius: 4, background: 'transparent', color: '#1565c0', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+          style={{
+            marginTop: 12, padding: '6px 16px',
+            border: `1px dashed ${tc.accent}`, borderRadius: 6,
+            background: 'transparent', color: tc.accent,
+            cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+          }}
         >
           + 新規テンプレート追加
         </button>

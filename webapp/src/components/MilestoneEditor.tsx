@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface Props {
   pageId: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) {
   const { data, updateMilestone, deleteMilestone } = useScheduleStore();
+  const tc = useThemeColors();
 
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
@@ -55,7 +57,12 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
         <div className="field">
           <label>Memo</label>
           <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} placeholder="メモ・補足情報"
-            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }} />
+            style={{
+              width: '100%', padding: '8px 10px',
+              border: `1px solid ${tc.inputBorder}`, borderRadius: '6px',
+              fontSize: '14px', fontFamily: 'inherit', resize: 'vertical',
+              background: tc.inputBg, color: tc.textPrimary,
+            }} />
         </div>
         <div className="actions">
           <button className="danger" onClick={handleDelete}>Delete</button>

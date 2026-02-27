@@ -1,4 +1,5 @@
 import type { BarColor } from '../types/schedule';
+import type { ThemeMode } from './theme';
 
 export interface ColorDef {
   fill: string;
@@ -16,6 +17,21 @@ export const COLOR_MAP: Record<BarColor, ColorDef> = {
   red:      { fill: '#e53935', stroke: '#c62828', fontColor: '#ffffff' },
   security: { fill: '#ffcdd2', stroke: '#e53935', fontColor: '#333333' },
 };
+
+const DARK_COLOR_MAP: Record<BarColor, ColorDef> = {
+  blue:     { fill: '#1e3a5f', stroke: '#60a5fa', fontColor: '#e0e7ff' },
+  pink:     { fill: '#4a2020', stroke: '#f87171', fontColor: '#fecdd3' },
+  green:    { fill: '#1a3a1a', stroke: '#86efac', fontColor: '#dcfce7' },
+  orange:   { fill: '#3d2e0a', stroke: '#fbbf24', fontColor: '#fef3c7' },
+  gray:     { fill: '#3f3f46', stroke: '#a1a1aa', fontColor: '#e4e4e7' },
+  purple:   { fill: '#2e1a47', stroke: '#c084fc', fontColor: '#ede9fe' },
+  red:      { fill: '#7f1d1d', stroke: '#f87171', fontColor: '#ffffff' },
+  security: { fill: '#451a1a', stroke: '#f87171', fontColor: '#fecdd3' },
+};
+
+export function getColorMap(mode: ThemeMode): Record<BarColor, ColorDef> {
+  return mode === 'dark' ? DARK_COLOR_MAP : COLOR_MAP;
+}
 
 // Reverse lookup: fillColor -> BarColor
 const FILL_TO_COLOR: Record<string, BarColor> = {

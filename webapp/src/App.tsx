@@ -7,6 +7,7 @@ import { PageTabs } from './components/PageTabs';
 import { GanttChart } from './components/GanttChart/GanttChart';
 import { setGanttContainer, getGanttContainer } from './lib/gantt-refs';
 import { scrollToToday } from './lib/scroll-utils';
+import { getTheme } from './lib/theme';
 
 export default function App() {
   const { data, loadData, undo, redo, deleteBar, deleteMilestone, currentPageId } = useScheduleStore();
@@ -14,11 +15,51 @@ export default function App() {
   const zoomLevel = useUIStore((s) => s.zoomLevel);
   const displayMode = useUIStore((s) => s.displayMode);
   const setContainerWidth = useUIStore((s) => s.setContainerWidth);
+  const themeMode = useUIStore((s) => s.themeMode);
+  const loadSettings = useUIStore((s) => s.loadSettings);
   const ganttContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Apply theme CSS variables to <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', themeMode);
+    const t = getTheme(themeMode);
+    root.style.setProperty('--color-bg', t.bg);
+    root.style.setProperty('--color-surface', t.surface);
+    root.style.setProperty('--color-surface-secondary', t.surfaceSecondary);
+    root.style.setProperty('--color-surface-hover', t.surfaceHover);
+    root.style.setProperty('--color-border', t.border);
+    root.style.setProperty('--color-border-light', t.borderLight);
+    root.style.setProperty('--color-text-primary', t.textPrimary);
+    root.style.setProperty('--color-text-secondary', t.textSecondary);
+    root.style.setProperty('--color-text-muted', t.textMuted);
+    root.style.setProperty('--color-accent', t.accent);
+    root.style.setProperty('--color-accent-light', t.accentLight);
+    root.style.setProperty('--color-accent-hover', t.accentHover);
+    root.style.setProperty('--color-danger', t.danger);
+    root.style.setProperty('--color-danger-light', t.dangerLight);
+    root.style.setProperty('--color-input-border', t.inputBorder);
+    root.style.setProperty('--color-input-bg', t.inputBg);
+    root.style.setProperty('--color-shadow', t.shadow);
+    root.style.setProperty('--color-shadow-strong', t.shadowStrong);
+    root.style.setProperty('--color-overlay-bg', t.overlayBg);
+    root.style.setProperty('--color-tooltip-bg', t.tooltipBg);
+    root.style.setProperty('--color-tooltip-text', t.tooltipText);
+    root.style.setProperty('--color-tag-chip-bg', t.tagChipBg);
+    root.style.setProperty('--color-tag-chip-text', t.tagChipText);
+    root.style.setProperty('--color-tag-chip-remove-hover', t.tagChipRemoveHover);
+    root.style.setProperty('--color-toggle-active-bg', t.toggleActiveBg);
+    root.style.setProperty('--color-toggle-active-border', t.toggleActiveBorder);
+    root.style.setProperty('--color-toggle-active-text', t.toggleActiveText);
+    root.style.setProperty('--color-segment-active-bg', t.segmentActiveBg);
+    root.style.setProperty('--color-segment-active-text', t.segmentActiveText);
+    root.style.setProperty('--color-save-status-dirty', t.saveStatusDirty);
+  }, [themeMode]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    loadSettings();
+  }, [loadData, loadSettings]);
 
   // ResizeObserver for container width measurement (fit mode)
   useEffect(() => {
