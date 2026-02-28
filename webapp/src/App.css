@@ -148,6 +148,12 @@ body,
   top: 0;
   z-index: 10;
   background: var(--color-surface);
+  line-height: 0;
+}
+
+.gantt-header-sticky svg,
+svg.gantt-chart {
+  display: block;
 }
 
 /* Context menu overlay — closes menu on outside click */

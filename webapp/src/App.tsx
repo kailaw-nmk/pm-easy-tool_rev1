@@ -22,6 +22,7 @@ export default function App() {
   const setShowHome = useUIStore((s) => s.setShowHome);
   const loadSettings = useUIStore((s) => s.loadSettings);
   const ganttContainerRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Apply theme CSS variables to <html>
   useEffect(() => {
@@ -65,19 +66,14 @@ export default function App() {
     loadSettings();
   }, [loadData, loadSettings]);
 
-  // ResizeObserver for container width measurement (fit mode)
+  // Cleanup ResizeObserver on unmount
   useEffect(() => {
-    const el = ganttContainerRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-        setContainerHeight(entry.contentRect.height);
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
       }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [setContainerWidth, setContainerHeight]);
+    };
+  }, []);
 
   // Scroll to today when zoom level changes
   useEffect(() => {
@@ -138,6 +134,22 @@ export default function App() {
   const setRef = (el: HTMLDivElement | null) => {
     ganttContainerRef.current = el;
     setGanttContainer(el);
+
+    // Setup/teardown ResizeObserver via callback ref
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+    if (el) {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setContainerWidth(entry.contentRect.width);
+          setContainerHeight(entry.contentRect.height);
+        }
+      });
+      observer.observe(el);
+      resizeObserverRef.current = observer;
+    }
   };
 
   return (

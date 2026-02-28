@@ -43,7 +43,7 @@ export function getEffectiveMonthWidth(
   if (totalMonths <= 0) return timeline.monthWidthPx;
 
   const availableWidth = params.containerWidth - params.headerWidth;
-  const fitWidth = Math.floor(availableWidth / totalMonths);
+  const fitWidth = availableWidth / totalMonths;
 
   // Clamp to a minimum to keep things readable
   return Math.max(8, fitWidth);

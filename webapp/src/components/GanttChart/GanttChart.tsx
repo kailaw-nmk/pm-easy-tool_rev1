@@ -82,8 +82,8 @@ export function GanttChart() {
     if (!page || !isFitVertical || containerHeight <= 0) return null;
     const numLanes = page.swimLanes.length;
     if (numLanes === 0) return null;
-    const availableHeight = containerHeight - headerHeight - 20;
-    return Math.max(40, Math.floor(availableHeight / numLanes));
+    const availableHeight = containerHeight - headerHeight;
+    return Math.max(40, availableHeight / numLanes);
   }, [page, isFitVertical, containerHeight, headerHeight]);
 
   // Lanes with effective height applied (for rendering only, data unchanged)
@@ -114,8 +114,9 @@ export function GanttChart() {
   }, [page, timeline, headerWidth, zoomLevel, laneOffsets, effectiveLanes, effectiveLaneHeight]);
 
   const bodyHeight = useMemo(() => {
-    return effectiveLanes.reduce((sum, l) => sum + l.heightPx, 0) + 20;
-  }, [effectiveLanes]);
+    const lanesTotal = effectiveLanes.reduce((sum, l) => sum + l.heightPx, 0);
+    return isFitVertical ? lanesTotal : lanesTotal + 20;
+  }, [effectiveLanes, isFitVertical]);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
