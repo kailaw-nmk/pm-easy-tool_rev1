@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState } from 'react';
 import type { Milestone, PageTimeline, ZoomLevel } from '../../types/schedule';
-import { itemX, xToDate, type PositionContext } from '../../lib/position';
+import { itemX, type PositionContext } from '../../lib/position';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -48,7 +48,8 @@ export function MilestoneComponent({
 
   const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0 });
 
-  const baseX = itemX(milestone.date, posCtx);
+  const dateX = itemX(milestone.date, posCtx);
+  const baseX = dateX + (milestone.xOffsetPx ?? 0);
   const baseY = laneY + milestone.yOffsetInLane;
 
   const renderX = baseX + dragOffset.dx;
@@ -105,21 +106,20 @@ export function MilestoneComponent({
 
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
-    const ctx: PositionContext = { timeline, headerWidth, zoomLevel };
 
-    const newDate = xToDate(baseX + dx, ctx);
-    const newYOffset = Math.round(
-      Math.max(0, Math.min(laneHeight - textHeight, drag.origYOffset + dy))
-    );
+    // Free placement: keep the same date, update pixel offset
+    const newAbsX = baseX + dx;
+    const newXOffset = newAbsX - dateX;
+    const newYOffset = Math.max(0, Math.round(drag.origYOffset + dy));
 
     updateMilestone(pageId, laneId, milestone.id, {
-      date: newDate,
+      xOffsetPx: newXOffset,
       yOffsetInLane: newYOffset,
     });
 
     setDragOffset({ dx: 0, dy: 0 });
     dragRef.current = null;
-  }, [baseX, headerWidth, laneHeight, laneId, milestone.id, onClick, pageId, textHeight, timeline, updateMilestone, zoomLevel]);
+  }, [baseX, dateX, laneId, milestone.id, onClick, pageId, updateMilestone]);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     if (milestone.tooltip && onTooltipShow) {

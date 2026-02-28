@@ -37,6 +37,7 @@ export interface Milestone {
   label: string;
   date: string; // "2026-07"
   yOffsetInLane: number;
+  xOffsetPx?: number; // pixel offset from date-snapped X position (free placement)
   tooltip?: string;
   memo?: string;
 }
