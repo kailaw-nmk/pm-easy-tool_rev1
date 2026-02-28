@@ -54,8 +54,18 @@ export function MilestoneComponent({
   const renderX = baseX + dragOffset.dx;
   const renderY = baseY + dragOffset.dy;
 
-  const lines = milestone.label.split('\n');
-  const textHeight = lines.length * (fontSizeMilestone + 3) + 6;
+  // Separate ★ marker from label text: "★ KickOff" → star + "KickOff"
+  const starMatch = milestone.label.match(/^(★\s*)([\s\S]*)$/);
+  const hasStar = !!starMatch;
+  const starChar = hasStar ? '★' : '';
+  const labelText = hasStar ? starMatch![2].trim() : milestone.label;
+  const labelLines = labelText ? labelText.split('\n') : [];
+
+  const starSize = fontSizeMilestone * 1.6;
+  const labelLineHeight = fontSizeMilestone + 3;
+  const labelBlockHeight = labelLines.length * labelLineHeight;
+  const starBlockHeight = hasStar ? starSize + 2 : 0;
+  const textHeight = labelBlockHeight + starBlockHeight + 6;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -149,11 +159,12 @@ export function MilestoneComponent({
         />
       )}
 
-      {lines.map((line, i) => (
+      {/* Label text above the star */}
+      {labelLines.map((line, i) => (
         <text
-          key={i}
+          key={`label-${i}`}
           x={renderX + timeline.monthWidthPx / 2}
-          y={renderY + 8 + i * (fontSizeMilestone + 3)}
+          y={renderY + 8 + i * labelLineHeight}
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={fontSizeMilestone}
@@ -164,6 +175,20 @@ export function MilestoneComponent({
           {line}
         </text>
       ))}
+      {/* Star symbol below the label text */}
+      {hasStar && (
+        <text
+          x={renderX + timeline.monthWidthPx / 2}
+          y={renderY + labelBlockHeight + 8 + starSize / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={starSize}
+          fill={tc.milestoneText}
+          style={{ userSelect: 'none' }}
+        >
+          {starChar}
+        </text>
+      )}
 
       {/* Memo icon */}
       {showMemos && milestone.memo && (
