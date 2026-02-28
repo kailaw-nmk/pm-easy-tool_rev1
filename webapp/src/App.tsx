@@ -16,6 +16,7 @@ export default function App() {
   const zoomLevel = useUIStore((s) => s.zoomLevel);
   const displayMode = useUIStore((s) => s.displayMode);
   const setContainerWidth = useUIStore((s) => s.setContainerWidth);
+  const setContainerHeight = useUIStore((s) => s.setContainerHeight);
   const themeMode = useUIStore((s) => s.themeMode);
   const showHome = useUIStore((s) => s.showHome);
   const setShowHome = useUIStore((s) => s.setShowHome);
@@ -71,11 +72,12 @@ export default function App() {
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerWidth(entry.contentRect.width);
+        setContainerHeight(entry.contentRect.height);
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [setContainerWidth]);
+  }, [setContainerWidth, setContainerHeight]);
 
   // Scroll to today when zoom level changes
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function App() {
       <div
         className="gantt-container"
         ref={setRef}
-        style={displayMode === 'fit' && zoomLevel !== 'day' ? { overflowX: 'hidden' } : undefined}
+        style={displayMode === 'fit' && zoomLevel !== 'day' ? { overflowX: 'hidden', overflowY: 'hidden' } : undefined}
       >
         <GanttChart />
       </div>

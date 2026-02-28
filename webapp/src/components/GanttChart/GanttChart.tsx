@@ -36,7 +36,7 @@ interface TooltipState {
 export function GanttChart() {
   const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
-  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
+  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
   const [editBar, setEditBar] = useState<{ barId: string; laneId: string } | null>(null);
   const [editMs, setEditMs] = useState<{ msId: string; laneId: string } | null>(null);
@@ -76,27 +76,46 @@ export function GanttChart() {
     return headerWidth + totalMonths * timeline.monthWidthPx;
   }, [timeline, zoomLevel, headerWidth, totalMonths]);
 
+  // Effective lane height: in fit mode (non-day zoom), auto-calculate from container height
+  const isFitVertical = displayMode === 'fit' && zoomLevel !== 'day';
+  const effectiveLaneHeight = useMemo(() => {
+    if (!page || !isFitVertical || containerHeight <= 0) return null;
+    const numLanes = page.swimLanes.length;
+    if (numLanes === 0) return null;
+    const availableHeight = containerHeight - headerHeight - 20;
+    return Math.max(40, Math.floor(availableHeight / numLanes));
+  }, [page, isFitVertical, containerHeight, headerHeight]);
+
+  // Lanes with effective height applied (for rendering only, data unchanged)
+  const effectiveLanes = useMemo(() => {
+    if (!page) return [];
+    if (effectiveLaneHeight === null) return page.swimLanes;
+    return page.swimLanes.map((lane) => ({ ...lane, heightPx: effectiveLaneHeight }));
+  }, [page, effectiveLaneHeight]);
+
   // Lane offsets start from 0 (body SVG coordinate space)
   const laneOffsets = useMemo(() => {
-    if (!page) return [];
     let y = 0;
-    return page.swimLanes.map((lane) => {
+    return effectiveLanes.map((lane) => {
       const offset = y;
       y += lane.heightPx;
       return { laneId: lane.id, y: offset };
     });
-  }, [page]);
+  }, [effectiveLanes]);
 
   const resolvedConns = useMemo(() => {
     if (!page || !timeline) return [];
     const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
-    return resolveConnections(page, laneOffsets, posCtx);
-  }, [page, timeline, headerWidth, zoomLevel, laneOffsets]);
+    // Use a page copy with effective lanes for correct connection positioning
+    const effectivePage = effectiveLaneHeight !== null
+      ? { ...page, swimLanes: effectiveLanes }
+      : page;
+    return resolveConnections(effectivePage, laneOffsets, posCtx);
+  }, [page, timeline, headerWidth, zoomLevel, laneOffsets, effectiveLanes, effectiveLaneHeight]);
 
   const bodyHeight = useMemo(() => {
-    if (!page) return 800;
-    return page.swimLanes.reduce((sum, l) => sum + l.heightPx, 0) + 20;
-  }, [page]);
+    return effectiveLanes.reduce((sum, l) => sum + l.heightPx, 0) + 20;
+  }, [effectiveLanes]);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -209,6 +228,7 @@ export function GanttChart() {
           clearConnectFrom();
           setConnectHovered(null);
           setNearestSnap(null);
+          setPlacementMode('none');
         }
         return;
       }
@@ -233,7 +253,7 @@ export function GanttChart() {
       // Determine which lane was clicked (0-based Y)
       let targetLaneId: string | null = null;
       let laneY = 0;
-      for (const lane of page.swimLanes) {
+      for (const lane of effectiveLanes) {
         if (svgPt.y >= laneY && svgPt.y < laneY + lane.heightPx) {
           targetLaneId = lane.id;
           break;
@@ -273,7 +293,7 @@ export function GanttChart() {
       clearSelection();
       setSelectedConnectionId(null);
     }
-  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection]);
+  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection, effectiveLanes]);
 
   const handleItemClick = useCallback((e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => {
     e.stopPropagation();
@@ -442,7 +462,7 @@ export function GanttChart() {
           />
 
           {/* Swim lanes (y starts from 0) */}
-          {page.swimLanes.map((lane, i) => {
+          {effectiveLanes.map((lane, i) => {
             const offset = laneOffsets[i];
             return (
               <SwimLaneComponent

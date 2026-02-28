@@ -44,6 +44,7 @@ interface UIState {
   fontSizeMilestone: number;
   displayMode: DisplayMode;
   containerWidth: number;
+  containerHeight: number;
   themeMode: ThemeMode;
   connectFrom: ConnectFrom | null;
   showHome: boolean;
@@ -56,6 +57,7 @@ interface UIState {
   setFontSizeMilestone: (size: number) => void;
   setDisplayMode: (mode: DisplayMode) => void;
   setContainerWidth: (width: number) => void;
+  setContainerHeight: (height: number) => void;
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   setConnectFrom: (from: ConnectFrom) => void;
@@ -74,6 +76,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   fontSizeMilestone: 7,
   displayMode: 'fixed',
   containerWidth: 0,
+  containerHeight: 0,
   themeMode: 'light',
   connectFrom: null,
   showHome: false,
@@ -110,6 +113,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     scheduleSettingsSave(get);
   },
   setContainerWidth: (width) => set({ containerWidth: width }),
+  setContainerHeight: (height) => set({ containerHeight: height }),
   setConnectFrom: (from) => set({ connectFrom: from }),
   clearConnectFrom: () => set({ connectFrom: null }),
   setShowHome: (show) => set({ showHome: show }),
