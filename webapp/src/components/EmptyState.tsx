@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useUIStore } from '../hooks/useUIStore';
 import type { ScheduleData } from '../types/schedule';
 
 function createDefaultData(): ScheduleData {
@@ -46,10 +47,21 @@ function createDefaultData(): ScheduleData {
   };
 }
 
-export function EmptyState() {
-  const importData = useScheduleStore((s) => s.importData);
+interface Props {
+  hasData?: boolean;
+  onBack?: () => void;
+}
+
+export function EmptyState({ hasData, onBack }: Props) {
+  const rawImportData = useScheduleStore((s) => s.importData);
+  const setShowHome = useUIStore((s) => s.setShowHome);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loadingSample, setLoadingSample] = useState(false);
+
+  const importData = (data: ScheduleData) => {
+    rawImportData(data);
+    setShowHome(false);
+  };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,7 +108,12 @@ export function EmptyState() {
         <p>ガントチャートのJSONファイルをインポートするか、新規プロジェクトを作成してください。</p>
         <p className="empty-state-hint">データはブラウザのlocalStorageに保存されます。</p>
         <div className="empty-state-actions">
-          <button className="primary" onClick={() => fileInputRef.current?.click()}>
+          {hasData && onBack && (
+            <button className="primary" onClick={onBack}>
+              スケジュールに戻る
+            </button>
+          )}
+          <button className={hasData ? '' : 'primary'} onClick={() => fileInputRef.current?.click()}>
             JSONファイルをインポート
           </button>
           <button onClick={handleNew}>

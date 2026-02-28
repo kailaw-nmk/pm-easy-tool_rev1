@@ -17,6 +17,8 @@ export default function App() {
   const displayMode = useUIStore((s) => s.displayMode);
   const setContainerWidth = useUIStore((s) => s.setContainerWidth);
   const themeMode = useUIStore((s) => s.themeMode);
+  const showHome = useUIStore((s) => s.showHome);
+  const setShowHome = useUIStore((s) => s.setShowHome);
   const loadSettings = useUIStore((s) => s.loadSettings);
   const ganttContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -127,8 +129,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!data) {
-    return <EmptyState />;
+  if (!data || showHome) {
+    return <EmptyState hasData={!!data} onBack={() => setShowHome(false)} />;
   }
 
   const setRef = (el: HTMLDivElement | null) => {

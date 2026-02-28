@@ -46,6 +46,7 @@ interface UIState {
   containerWidth: number;
   themeMode: ThemeMode;
   connectFrom: ConnectFrom | null;
+  showHome: boolean;
   toggleTooltips: () => void;
   toggleMemos: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
@@ -59,6 +60,7 @@ interface UIState {
   toggleTheme: () => void;
   setConnectFrom: (from: ConnectFrom) => void;
   clearConnectFrom: () => void;
+  setShowHome: (show: boolean) => void;
   loadSettings: () => Promise<void>;
 }
 
@@ -74,6 +76,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   containerWidth: 0,
   themeMode: 'light',
   connectFrom: null,
+  showHome: false,
 
   toggleTooltips: () => set((s) => {
     const next = { showTooltips: !s.showTooltips };
@@ -109,6 +112,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setContainerWidth: (width) => set({ containerWidth: width }),
   setConnectFrom: (from) => set({ connectFrom: from }),
   clearConnectFrom: () => set({ connectFrom: null }),
+  setShowHome: (show) => set({ showHome: show }),
   setThemeMode: (mode) => {
     try { localStorage.setItem('app-theme', mode); } catch {}
     set({ themeMode: mode });

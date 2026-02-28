@@ -13,7 +13,7 @@ import type { ZoomLevel, DisplayMode } from '../types/schedule';
 
 export function Toolbar() {
   const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData } = useScheduleStore();
-  const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme } = useUIStore();
+  const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme, setShowHome } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
@@ -88,6 +88,13 @@ export function Toolbar() {
   return (
     <>
       <div className="toolbar">
+        {/* Home */}
+        <button onClick={() => setShowHome(true)} title="トップページ">
+          {'\u{1F3E0}'}
+        </button>
+
+        <div className="separator" />
+
         {/* Save */}
         <button onClick={() => saveData()} disabled={!isDirty || isSaving} title={isSaving ? 'Saving...' : 'Save'}>
           {isSaving ? '...' : '\u{1F4BE}'}
