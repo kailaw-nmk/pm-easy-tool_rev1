@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate } from '../types/schedule';
+import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection } from '../types/schedule';
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
 import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
@@ -53,6 +53,10 @@ interface ScheduleState {
   updatePageMonthWidth: (pageId: string, widthPx: number) => void;
   // Timeline
   updateMonthWidth: (widthPx: number) => void;
+  // Connection operations
+  addConnection: (pageId: string, connection: Connection) => void;
+  updateConnection: (pageId: string, connectionId: string, updates: Partial<Connection>) => void;
+  deleteConnection: (pageId: string, connectionId: string) => void;
   // Import/Export
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
@@ -183,6 +187,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const lane = page.swimLanes.find((l) => l.id === laneId);
         if (!lane) return;
         lane.bars = lane.bars.filter((b) => b.id !== barId);
+        if (page.connections) {
+          page.connections = page.connections.filter(
+            (c) => c.fromItemId !== barId && c.toItemId !== barId
+          );
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -250,6 +259,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const lane = page.swimLanes.find((l) => l.id === laneId);
         if (!lane) return;
         lane.milestones = lane.milestones.filter((m) => m.id !== msId);
+        if (page.connections) {
+          page.connections = page.connections.filter(
+            (c) => c.fromItemId !== msId && c.toItemId !== msId
+          );
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -311,6 +325,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page) return;
         page.swimLanes = page.swimLanes.filter((l) => l.id !== laneId);
+        if (page.connections) {
+          page.connections = page.connections.filter(
+            (c) => c.fromLaneId !== laneId && c.toLaneId !== laneId
+          );
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -527,6 +546,51 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const historyUpdate = pushHistory(state);
       const newData = produce(state.data!, (draft) => {
         draft.timeline.monthWidthPx = Math.max(20, Math.min(120, widthPx));
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  addConnection: (pageId, connection) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        if (!page.connections) page.connections = [];
+        page.connections.push(connection);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  updateConnection: (pageId, connectionId, updates) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.connections) return;
+        const conn = page.connections.find((c) => c.id === connectionId);
+        if (!conn) return;
+        Object.assign(conn, updates);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  deleteConnection: (pageId, connectionId) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.connections) return;
+        page.connections = page.connections.filter((c) => c.id !== connectionId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

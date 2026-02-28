@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import type { ZoomLevel, DisplayMode, DisplaySettings } from '../types/schedule';
+import type { ZoomLevel, DisplayMode, DisplaySettings, ConnectionAnchor } from '../types/schedule';
 import type { ThemeMode } from '../lib/theme';
 import { loadSettingsFromStorage, saveSettingsToStorage } from '../lib/storage';
 
-type PlacementMode = 'none' | 'bar' | 'milestone';
+type PlacementMode = 'none' | 'bar' | 'milestone' | 'connect';
 
 function extractSettings(state: UIState): DisplaySettings {
   return {
@@ -28,6 +28,12 @@ function scheduleSettingsSave(getState: () => UIState) {
   }, 1000);
 }
 
+interface ConnectFrom {
+  itemId: string;
+  laneId: string;
+  anchor: ConnectionAnchor;
+}
+
 interface UIState {
   showTooltips: boolean;
   showMemos: boolean;
@@ -39,6 +45,7 @@ interface UIState {
   displayMode: DisplayMode;
   containerWidth: number;
   themeMode: ThemeMode;
+  connectFrom: ConnectFrom | null;
   toggleTooltips: () => void;
   toggleMemos: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
@@ -50,6 +57,8 @@ interface UIState {
   setContainerWidth: (width: number) => void;
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
+  setConnectFrom: (from: ConnectFrom) => void;
+  clearConnectFrom: () => void;
   loadSettings: () => Promise<void>;
 }
 
@@ -64,6 +73,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   displayMode: 'fixed',
   containerWidth: 0,
   themeMode: 'light',
+  connectFrom: null,
 
   toggleTooltips: () => set((s) => {
     const next = { showTooltips: !s.showTooltips };
@@ -79,7 +89,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ zoomLevel: level });
     scheduleSettingsSave(get);
   },
-  setPlacementMode: (mode) => set({ placementMode: mode }),
+  setPlacementMode: (mode) => set({ placementMode: mode, connectFrom: null }),
   setFontSizeLaneTitle: (size) => {
     set({ fontSizeLaneTitle: size });
     scheduleSettingsSave(get);
@@ -97,6 +107,8 @@ export const useUIStore = create<UIState>((set, get) => ({
     scheduleSettingsSave(get);
   },
   setContainerWidth: (width) => set({ containerWidth: width }),
+  setConnectFrom: (from) => set({ connectFrom: from }),
+  clearConnectFrom: () => set({ connectFrom: null }),
   setThemeMode: (mode) => {
     try { localStorage.setItem('app-theme', mode); } catch {}
     set({ themeMode: mode });

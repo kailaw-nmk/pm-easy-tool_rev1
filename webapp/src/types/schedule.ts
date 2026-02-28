@@ -52,6 +52,26 @@ export interface SwimLane {
   registryId?: string;
 }
 
+export type ConnectionLineType = 'straight' | 'orthogonal';
+
+export interface ConnectionAnchor {
+  edge: 'top' | 'right' | 'bottom' | 'left';
+  position: number; // 0.0〜1.0（辺に沿った正規化位置）
+}
+
+export interface Connection {
+  id: string;
+  fromItemId: string;
+  fromLaneId: string;
+  toItemId: string;
+  toLaneId: string;
+  fromAnchor?: ConnectionAnchor;
+  toAnchor?: ConnectionAnchor;
+  lineType: ConnectionLineType;
+  memo?: string;
+  color?: string;
+}
+
 export interface Annotation {
   id: string;
   type: 'note' | 'copyright';
@@ -74,6 +94,7 @@ export interface SchedulePage {
   timeline?: PageTimeline;
   swimLanes: SwimLane[];
   annotations: Annotation[];
+  connections?: Connection[];
   filterTags?: string[];
 }
 

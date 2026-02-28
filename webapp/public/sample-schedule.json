@@ -1,0 +1,295 @@
+{
+  "version": "3.1.0",
+  "lastModified": "2026-02-28T00:00:00.000Z",
+  "timeline": {
+    "startDate": "2026-01",
+    "endDate": "2027-06",
+    "monthWidthPx": 55,
+    "laneHeaderWidthPx": 140
+  },
+  "pages": [
+    {
+      "id": "p_sample_1",
+      "name": "プロジェクト全体",
+      "swimLanes": [
+        {
+          "id": "lane_planning",
+          "label": "企画",
+          "heightPx": 80,
+          "bars": [
+            {
+              "id": "bar_req",
+              "label": "要件定義",
+              "startMonth": "2026-01",
+              "endMonth": "2026-03",
+              "color": "blue",
+              "yOffsetInLane": 8,
+              "heightPx": 24,
+              "tooltip": "顧客ヒアリング・要件整理",
+              "memo": "主要ステークホルダーとの合意必須"
+            },
+            {
+              "id": "bar_design",
+              "label": "基本設計",
+              "startMonth": "2026-03",
+              "endMonth": "2026-05",
+              "color": "purple",
+              "yOffsetInLane": 40,
+              "heightPx": 24,
+              "tooltip": "アーキテクチャ設計・DB設計"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "ms_kickoff",
+              "label": "★ KickOff",
+              "date": "2026-01",
+              "yOffsetInLane": 60,
+              "tooltip": "プロジェクト開始"
+            }
+          ],
+          "tags": ["企画", "全体"],
+          "registryId": "tmpl_planning"
+        },
+        {
+          "id": "lane_dev",
+          "label": "開発",
+          "heightPx": 100,
+          "bars": [
+            {
+              "id": "bar_frontend",
+              "label": "フロントエンド開発",
+              "startMonth": "2026-04",
+              "endMonth": "2026-09",
+              "color": "green",
+              "yOffsetInLane": 8,
+              "heightPx": 24,
+              "tooltip": "React + TypeScript"
+            },
+            {
+              "id": "bar_backend",
+              "label": "バックエンド開発",
+              "startMonth": "2026-04",
+              "endMonth": "2026-08",
+              "color": "orange",
+              "yOffsetInLane": 40,
+              "heightPx": 24,
+              "tooltip": "API・DB構築",
+              "memo": "マイクロサービス構成"
+            },
+            {
+              "id": "bar_infra",
+              "label": "インフラ構築",
+              "startMonth": "2026-03",
+              "endMonth": "2026-06",
+              "color": "gray",
+              "yOffsetInLane": 72,
+              "heightPx": 20,
+              "style": { "dashed": true },
+              "tooltip": "AWS環境構築"
+            }
+          ],
+          "milestones": [],
+          "tags": ["開発"],
+          "registryId": "tmpl_dev"
+        },
+        {
+          "id": "lane_test",
+          "label": "テスト",
+          "heightPx": 80,
+          "bars": [
+            {
+              "id": "bar_ut",
+              "label": "単体テスト",
+              "startMonth": "2026-06",
+              "endMonth": "2026-09",
+              "color": "pink",
+              "yOffsetInLane": 8,
+              "heightPx": 24
+            },
+            {
+              "id": "bar_it",
+              "label": "結合テスト",
+              "startMonth": "2026-09",
+              "endMonth": "2026-11",
+              "color": "red",
+              "yOffsetInLane": 40,
+              "heightPx": 24,
+              "tooltip": "システム間連携テスト"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "ms_release",
+              "label": "★ リリース",
+              "date": "2026-12",
+              "yOffsetInLane": 30,
+              "tooltip": "本番リリース予定"
+            }
+          ],
+          "tags": ["テスト", "品質"],
+          "registryId": "tmpl_test"
+        },
+        {
+          "id": "lane_ops",
+          "label": "運用",
+          "heightPx": 70,
+          "bars": [
+            {
+              "id": "bar_ops_prep",
+              "label": "運用準備",
+              "startMonth": "2026-10",
+              "endMonth": "2026-12",
+              "color": "security",
+              "yOffsetInLane": 8,
+              "heightPx": 24,
+              "tooltip": "監視・アラート設定"
+            },
+            {
+              "id": "bar_ops_run",
+              "label": "運用開始",
+              "startMonth": "2027-01",
+              "endMonth": "2027-06",
+              "color": "blue",
+              "yOffsetInLane": 38,
+              "heightPx": 22,
+              "style": { "opacity": 0.7 }
+            }
+          ],
+          "milestones": [],
+          "tags": ["運用"],
+          "registryId": "tmpl_ops"
+        }
+      ],
+      "annotations": [],
+      "connections": [
+        {
+          "id": "conn_1",
+          "fromItemId": "bar_req",
+          "fromLaneId": "lane_planning",
+          "toItemId": "bar_design",
+          "toLaneId": "lane_planning",
+          "lineType": "straight",
+          "memo": "要件確定後"
+        },
+        {
+          "id": "conn_2",
+          "fromItemId": "bar_design",
+          "fromLaneId": "lane_planning",
+          "toItemId": "bar_frontend",
+          "toLaneId": "lane_dev",
+          "lineType": "orthogonal",
+          "memo": "設計完了→開発開始",
+          "color": "#3b82f6"
+        },
+        {
+          "id": "conn_3",
+          "fromItemId": "bar_frontend",
+          "fromLaneId": "lane_dev",
+          "toItemId": "bar_ut",
+          "toLaneId": "lane_test",
+          "lineType": "orthogonal"
+        },
+        {
+          "id": "conn_4",
+          "fromItemId": "bar_it",
+          "fromLaneId": "lane_test",
+          "toItemId": "bar_ops_prep",
+          "toLaneId": "lane_ops",
+          "lineType": "straight",
+          "color": "#ef4444"
+        }
+      ]
+    },
+    {
+      "id": "p_sample_2",
+      "name": "開発チーム詳細",
+      "swimLanes": [
+        {
+          "id": "lane_fe",
+          "label": "フロントエンド\nチーム",
+          "heightPx": 90,
+          "bars": [
+            {
+              "id": "bar_ui",
+              "label": "UI実装",
+              "startMonth": "2026-04",
+              "endMonth": "2026-07",
+              "color": "green",
+              "yOffsetInLane": 8,
+              "heightPx": 24,
+              "tooltip": "コンポーネント開発"
+            },
+            {
+              "id": "bar_perf",
+              "label": "パフォーマンス改善",
+              "startMonth": "2026-07",
+              "endMonth": "2026-09",
+              "color": "purple",
+              "yOffsetInLane": 40,
+              "heightPx": 24
+            }
+          ],
+          "milestones": [
+            {
+              "id": "ms_alpha",
+              "label": "★ α版",
+              "date": "2026-06",
+              "yOffsetInLane": 68
+            }
+          ],
+          "tags": ["開発", "フロントエンド"],
+          "registryId": "tmpl_fe"
+        },
+        {
+          "id": "lane_be",
+          "label": "バックエンド\nチーム",
+          "heightPx": 90,
+          "bars": [
+            {
+              "id": "bar_api",
+              "label": "API開発",
+              "startMonth": "2026-04",
+              "endMonth": "2026-07",
+              "color": "orange",
+              "yOffsetInLane": 8,
+              "heightPx": 24,
+              "tooltip": "REST API実装"
+            },
+            {
+              "id": "bar_db",
+              "label": "DB最適化",
+              "startMonth": "2026-06",
+              "endMonth": "2026-08",
+              "color": "gray",
+              "yOffsetInLane": 40,
+              "heightPx": 24,
+              "memo": "インデックス設計"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "ms_beta",
+              "label": "★ β版",
+              "date": "2026-08",
+              "yOffsetInLane": 68,
+              "tooltip": "ベータリリース"
+            }
+          ],
+          "tags": ["開発", "バックエンド"],
+          "registryId": "tmpl_be"
+        }
+      ],
+      "annotations": [],
+      "connections": []
+    }
+  ],
+  "laneRegistry": [
+    { "id": "tmpl_planning", "label": "企画", "tags": ["企画", "全体"], "defaultHeightPx": 80 },
+    { "id": "tmpl_dev", "label": "開発", "tags": ["開発"], "defaultHeightPx": 100 },
+    { "id": "tmpl_test", "label": "テスト", "tags": ["テスト", "品質"], "defaultHeightPx": 80 },
+    { "id": "tmpl_ops", "label": "運用", "tags": ["運用"], "defaultHeightPx": 70 },
+    { "id": "tmpl_fe", "label": "フロントエンド\nチーム", "tags": ["開発", "フロントエンド"], "defaultHeightPx": 90 },
+    { "id": "tmpl_be", "label": "バックエンド\nチーム", "tags": ["開発", "バックエンド"], "defaultHeightPx": 90 }
+  ]
+}

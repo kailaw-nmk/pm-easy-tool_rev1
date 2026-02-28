@@ -9,6 +9,7 @@ interface Props {
   timeline: PageTimeline;
   headerWidth: number;
   zoomLevel?: ZoomLevel;
+  fontScale?: number;
 }
 
 interface YearSpan {
@@ -23,9 +24,10 @@ interface QuarterSpan {
   width: number;
 }
 
-export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: Props) {
+export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month', fontScale = 1.0 }: Props) {
   const config = getZoomConfig(zoomLevel);
   const tc = useThemeColors();
+  const fs = (base: number) => base * fontScale;
 
   const months = useMemo(
     () => generateMonthRange(timeline.startDate, timeline.endDate),
@@ -106,7 +108,7 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
       <rect x={0} y={YEAR_HEADER_Y} width={headerWidth} height={totalHeaderHeight}
         fill={tc.headerBg} stroke={tc.laneBorder} strokeWidth={1} />
       <text x={headerWidth / 2} y={YEAR_HEADER_Y + totalHeaderHeight / 2}
-        textAnchor="middle" dominantBaseline="central" fontSize={8} fontWeight="bold" fill={tc.textPrimary}>
+        textAnchor="middle" dominantBaseline="central" fontSize={fs(8)} fontWeight="bold" fill={tc.textPrimary}>
         日程
       </text>
 
@@ -118,7 +120,7 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
             <rect x={ys.startX} y={yPos} width={ys.width} height={YEAR_HEADER_HEIGHT}
               fill={tc.headerAccentBg} stroke={tc.headerAccentStroke} strokeWidth={1} />
             <text x={ys.startX + ys.width / 2} y={yPos + YEAR_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold" fill={tc.headerAccentText}>
+              textAnchor="middle" dominantBaseline="central" fontSize={fs(12)} fontWeight="bold" fill={tc.headerAccentText}>
               {ys.year}年
             </text>
           </g>
@@ -133,7 +135,7 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
             <rect x={qs.startX} y={yPos} width={qs.width} height={QUARTER_HEADER_HEIGHT}
               fill={tc.headerQuarterBg} stroke={tc.headerAccentStroke} strokeWidth={1} />
             <text x={qs.startX + qs.width / 2} y={yPos + QUARTER_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight="bold" fill={tc.headerAccentText}>
+              textAnchor="middle" dominantBaseline="central" fontSize={fs(10)} fontWeight="bold" fill={tc.headerAccentText}>
               {qs.label}
             </text>
           </g>
@@ -163,7 +165,7 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
             <rect x={x} y={yPos} width={w} height={MONTH_HEADER_HEIGHT}
               fill={tc.headerMonthBg} stroke={tc.headerDayStroke} strokeWidth={1} />
             <text x={x + w / 2} y={yPos + MONTH_HEADER_HEIGHT / 2}
-              textAnchor="middle" dominantBaseline="central" fontSize={8} fill={tc.textSecondary}>
+              textAnchor="middle" dominantBaseline="central" fontSize={fs(8)} fill={tc.textSecondary}>
               {monthAbbr(month)}
             </text>
           </g>
@@ -188,7 +190,7 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month' }: P
                 <rect x={x} y={yPos} width={dayWidth} height={MONTH_HEADER_HEIGHT}
                   fill={d % 2 === 0 ? tc.headerDayEvenBg : tc.headerDayOddBg} stroke={tc.headerDayStroke} strokeWidth={0.5} />
                 <text x={x + dayWidth / 2} y={yPos + MONTH_HEADER_HEIGHT / 2}
-                  textAnchor="middle" dominantBaseline="central" fontSize={7} fill={tc.textSecondary}>
+                  textAnchor="middle" dominantBaseline="central" fontSize={fs(7)} fill={tc.textSecondary}>
                   {d}
                 </text>
               </g>

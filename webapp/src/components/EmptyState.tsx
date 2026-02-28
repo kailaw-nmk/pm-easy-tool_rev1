@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import type { ScheduleData } from '../types/schedule';
 
@@ -7,7 +7,7 @@ function createDefaultData(): ScheduleData {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   return {
-    version: '2',
+    version: '3.1.0',
     lastModified: now.toISOString(),
     timeline: {
       startDate: `${y}-01`,
@@ -39,6 +39,7 @@ function createDefaultData(): ScheduleData {
           },
         ],
         annotations: [],
+        connections: [],
       },
     ],
     laneRegistry: [],
@@ -48,6 +49,7 @@ function createDefaultData(): ScheduleData {
 export function EmptyState() {
   const importData = useScheduleStore((s) => s.importData);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,6 +75,20 @@ export function EmptyState() {
     importData(createDefaultData());
   };
 
+  const handleLoadSample = async () => {
+    setLoadingSample(true);
+    try {
+      const res = await fetch('/sample-schedule.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      importData(data);
+    } catch {
+      alert('サンプルデータの読み込みに失敗しました。');
+    } finally {
+      setLoadingSample(false);
+    }
+  };
+
   return (
     <div className="empty-state">
       <div className="empty-state-content">
@@ -85,6 +101,9 @@ export function EmptyState() {
           </button>
           <button onClick={handleNew}>
             新規プロジェクトを作成
+          </button>
+          <button onClick={handleLoadSample} disabled={loadingSample}>
+            {loadingSample ? '読込中...' : 'サンプルを読み込む'}
           </button>
         </div>
         <input

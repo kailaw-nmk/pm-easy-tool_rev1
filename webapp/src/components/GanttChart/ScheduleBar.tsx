@@ -16,6 +16,7 @@ interface Props {
   timeline: PageTimeline;
   headerWidth: number;
   zoomLevel: ZoomLevel;
+  fontScale?: number;
   laneHeight: number;
   isSelected?: boolean;
   showMemos?: boolean;
@@ -33,12 +34,13 @@ const HANDLE_WIDTH = 6;
 const BOTTOM_HANDLE_HEIGHT = 6;
 
 export function ScheduleBarComponent({
-  bar, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, laneHeight,
+  bar, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, fontScale = 1.0, laneHeight,
   isSelected, showMemos, onDoubleClick, onContextMenu, onClick,
   onTooltipShow, onTooltipHide,
 }: Props) {
   const updateBar = useScheduleStore((s) => s.updateBar);
-  const fontSizeBarText = useUIStore((s) => s.fontSizeBarText);
+  const baseFontSizeBarText = useUIStore((s) => s.fontSizeBarText);
+  const fontSizeBarText = baseFontSizeBarText * fontScale;
   const themeMode = useUIStore((s) => s.themeMode);
   const tc = useThemeColors();
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useSelectionStore } from '../../hooks/useSelectionStore';
 import { useUIStore } from '../../hooks/useUIStore';
@@ -6,17 +6,23 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { TimelineHeader } from './TimelineHeader';
 import { SwimLaneComponent } from './SwimLane';
 import { TodayLine } from './TodayLine';
+import { ConnectionLayer } from './ConnectionLayer';
+import { SnapPointOverlay } from './SnapPointOverlay';
 import { BarEditorDialog } from '../BarEditor';
 import { MilestoneEditorDialog } from '../MilestoneEditor';
 import { LaneTagEditor } from '../LaneTagEditor';
+import { ConnectionEditorDialog } from '../ConnectionEditor';
 import { monthsBetween, xToMonth } from '../../lib/date-utils';
 import { dayZoomTotalWidth, getHeaderHeight } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
+import { resolveConnections, getItemRect } from '../../lib/connection-utils';
+import { generateSnapPoints, findNearestSnapPoint, type SnapPoint } from '../../lib/snap-points';
+import type { PositionContext } from '../../lib/position';
 
 interface ContextMenuState {
   x: number;
   y: number;
-  type: 'bar' | 'milestone' | 'lane';
+  type: 'bar' | 'milestone' | 'lane' | 'connection';
   id: string;
   laneId: string;
 }
@@ -28,24 +34,32 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, updateLaneHeight, addBar, addMilestone } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
-  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth } = useUIStore();
+  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
   const [editBar, setEditBar] = useState<{ barId: string; laneId: string } | null>(null);
   const [editMs, setEditMs] = useState<{ msId: string; laneId: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [editLaneTags, setEditLaneTags] = useState<string | null>(null);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [editConnection, setEditConnection] = useState<string | null>(null);
+  const [connectHovered, setConnectHovered] = useState<{ itemId: string; laneId: string } | null>(null);
+  const [connectMousePos, setConnectMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [nearestSnap, setNearestSnap] = useState<SnapPoint | null>(null);
+  const bodySvgRef = useRef<SVGSVGElement>(null);
 
   const page = data?.pages.find((p) => p.id === currentPageId);
   const rawTimeline = page?.timeline ?? data?.timeline;
   const headerWidth = data?.timeline.laneHeaderWidthPx ?? 140;
 
-  const timeline = useMemo(
+  const resolvedTimeline = useMemo(
     () => resolveTimeline(rawTimeline, { headerWidth, containerWidth, displayMode, zoomLevel }),
     [rawTimeline, headerWidth, containerWidth, displayMode, zoomLevel],
   );
+  const timeline = resolvedTimeline;
+  const fontScale = resolvedTimeline?.fontScale ?? 1.0;
 
   const headerHeight = useMemo(() => getHeaderHeight(zoomLevel), [zoomLevel]);
 
@@ -72,6 +86,12 @@ export function GanttChart() {
       return { laneId: lane.id, y: offset };
     });
   }, [page]);
+
+  const resolvedConns = useMemo(() => {
+    if (!page || !timeline) return [];
+    const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
+    return resolveConnections(page, laneOffsets, posCtx);
+  }, [page, timeline, headerWidth, zoomLevel, laneOffsets]);
 
   const bodyHeight = useMemo(() => {
     if (!page) return 800;
@@ -102,9 +122,46 @@ export function GanttChart() {
       deleteMilestone(currentPageId, contextMenu.laneId, contextMenu.id);
     } else if (contextMenu.type === 'lane') {
       removeLane(currentPageId, contextMenu.laneId);
+    } else if (contextMenu.type === 'connection') {
+      deleteConnection(currentPageId, contextMenu.id);
+      setSelectedConnectionId(null);
     }
     setContextMenu(null);
-  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane]);
+  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection]);
+
+  const handleConnectionClick = useCallback((e: React.MouseEvent, connectionId: string) => {
+    e.stopPropagation();
+    clearSelection();
+    setSelectedConnectionId(connectionId);
+  }, [clearSelection]);
+
+  const handleConnectionDoubleClick = useCallback((connectionId: string) => {
+    setEditConnection(connectionId);
+  }, []);
+
+  const handleConnectionContextMenu = useCallback((e: React.MouseEvent, connectionId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedConnectionId(connectionId);
+    setContextMenu({ x: e.clientX, y: e.clientY, type: 'connection', id: connectionId, laneId: '' });
+  }, []);
+
+  const handleCreateConnection = useCallback(() => {
+    if (!contextMenu) return;
+    // Need exactly 2 items selected (bar or milestone)
+    const items = selected.filter((s) => s.type === 'bar' || s.type === 'milestone');
+    if (items.length !== 2) return;
+    const [from, to] = items;
+    addConnection(currentPageId, {
+      id: `conn_${Date.now()}`,
+      fromItemId: from.id,
+      fromLaneId: from.laneId,
+      toItemId: to.id,
+      toLaneId: to.laneId,
+      lineType: 'orthogonal',
+    });
+    setContextMenu(null);
+  }, [contextMenu, selected, currentPageId, addConnection]);
 
   const handleDuplicate = useCallback(() => {
     if (!contextMenu || contextMenu.type !== 'bar') return;
@@ -128,6 +185,43 @@ export function GanttChart() {
   const handleSvgClick = useCallback((e: React.MouseEvent) => {
     closeContextMenu();
 
+    // Connect mode: handle snap point clicks
+    if (placementMode === 'connect' && page && timeline) {
+      if (nearestSnap && connectHovered) {
+        const anchor = { edge: nearestSnap.edge, position: nearestSnap.position };
+        if (!connectFrom) {
+          // First click: set start point
+          setConnectFrom({ itemId: connectHovered.itemId, laneId: connectHovered.laneId, anchor });
+        } else {
+          // Second click: create connection (must be different item)
+          if (connectFrom.itemId !== connectHovered.itemId) {
+            addConnection(currentPageId, {
+              id: `conn_${Date.now()}`,
+              fromItemId: connectFrom.itemId,
+              fromLaneId: connectFrom.laneId,
+              toItemId: connectHovered.itemId,
+              toLaneId: connectHovered.laneId,
+              fromAnchor: connectFrom.anchor,
+              toAnchor: anchor,
+              lineType: 'orthogonal',
+            });
+          }
+          clearConnectFrom();
+          setConnectHovered(null);
+          setNearestSnap(null);
+        }
+        return;
+      }
+      // Click on empty area while in connect mode — cancel if from is set
+      if (connectFrom) {
+        clearConnectFrom();
+        setConnectHovered(null);
+        setNearestSnap(null);
+        return;
+      }
+      return;
+    }
+
     // Placement mode: place item on chart click (body SVG, 0-based Y)
     if (placementMode !== 'none' && page && timeline) {
       const svg = (e.currentTarget as SVGSVGElement);
@@ -149,7 +243,6 @@ export function GanttChart() {
       if (!targetLaneId) return;
 
       const clickDate = xToMonth(svgPt.x, timeline.startDate, timeline.monthWidthPx, headerWidth);
-      const yInLane = svgPt.y - laneY + (page.swimLanes.find(l => l.id === targetLaneId)?.heightPx ?? 0);
 
       if (placementMode === 'bar') {
         const [y, m] = clickDate.split('-').map(Number);
@@ -178,8 +271,9 @@ export function GanttChart() {
 
     if ((e.target as SVGElement).tagName === 'svg' || (e.target as SVGElement).classList.contains('gantt-bg')) {
       clearSelection();
+      setSelectedConnectionId(null);
     }
-  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode]);
+  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection]);
 
   const handleItemClick = useCallback((e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => {
     e.stopPropagation();
@@ -195,26 +289,33 @@ export function GanttChart() {
   // Delete key handler for selected items
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selected.length > 0) {
-        // Don't delete if an input/textarea is focused
+      if (e.key === 'Delete') {
         const tag = (e.target as HTMLElement).tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-        for (const item of selected) {
-          if (item.type === 'lane') {
-            removeLane(currentPageId, item.laneId);
-          } else if (item.type === 'bar') {
-            deleteBar(currentPageId, item.laneId, item.id);
-          } else if (item.type === 'milestone') {
-            deleteMilestone(currentPageId, item.laneId, item.id);
-          }
+        if (selectedConnectionId) {
+          deleteConnection(currentPageId, selectedConnectionId);
+          setSelectedConnectionId(null);
+          return;
         }
-        clearSelection();
+
+        if (selected.length > 0) {
+          for (const item of selected) {
+            if (item.type === 'lane') {
+              removeLane(currentPageId, item.laneId);
+            } else if (item.type === 'bar') {
+              deleteBar(currentPageId, item.laneId, item.id);
+            } else if (item.type === 'milestone') {
+              deleteMilestone(currentPageId, item.laneId, item.id);
+            }
+          }
+          clearSelection();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, currentPageId, deleteBar, deleteMilestone, removeLane, clearSelection]);
+  }, [selected, selectedConnectionId, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, clearSelection]);
 
   const handleTooltipShow = useCallback((text: string, x: number, y: number) => {
     if (showTooltips) {
@@ -226,6 +327,83 @@ export function GanttChart() {
     setTooltip(null);
   }, []);
 
+  // Connect mode: track mouse for snap point detection
+  const handleConnectMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (placementMode !== 'connect' || !page || !timeline) return;
+    const svg = bodySvgRef.current;
+    if (!svg) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgPt = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+    setConnectMousePos({ x: svgPt.x, y: svgPt.y });
+
+    // Determine which item is hovered
+    const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
+    let foundHover: { itemId: string; laneId: string } | null = null;
+    let foundSnap: SnapPoint | null = null;
+
+    for (const lane of page.swimLanes) {
+      const laneOffset = laneOffsets.find((lo) => lo.laneId === lane.id);
+      if (!laneOffset) continue;
+      const laneY = laneOffset.y;
+
+      // Check bars
+      for (const bar of lane.bars) {
+        const rect = getItemRect(lane, bar.id, laneY, posCtx);
+        if (!rect) continue;
+        // Expand hit area slightly for better hover detection
+        if (svgPt.x >= rect.x - 15 && svgPt.x <= rect.x + rect.w + 15 &&
+            svgPt.y >= rect.y - 15 && svgPt.y <= rect.y + rect.h + 15) {
+          const snaps = generateSnapPoints(rect, 10);
+          const nearest = findNearestSnapPoint(svgPt.x, svgPt.y, snaps, 15);
+          if (nearest) {
+            foundHover = { itemId: bar.id, laneId: lane.id };
+            foundSnap = nearest;
+            break;
+          }
+        }
+      }
+      if (foundHover) break;
+
+      // Check milestones
+      for (const ms of lane.milestones) {
+        const rect = getItemRect(lane, ms.id, laneY, posCtx);
+        if (!rect) continue;
+        if (svgPt.x >= rect.x - 15 && svgPt.x <= rect.x + rect.w + 15 &&
+            svgPt.y >= rect.y - 15 && svgPt.y <= rect.y + rect.h + 15) {
+          const snaps = generateSnapPoints(rect, 10);
+          const nearest = findNearestSnapPoint(svgPt.x, svgPt.y, snaps, 15);
+          if (nearest) {
+            foundHover = { itemId: ms.id, laneId: lane.id };
+            foundSnap = nearest;
+            break;
+          }
+        }
+      }
+      if (foundHover) break;
+    }
+
+    setConnectHovered(foundHover);
+    setNearestSnap(foundSnap);
+  }, [placementMode, page, timeline, headerWidth, zoomLevel, laneOffsets]);
+
+  // ESC key cancels connect mode
+  useEffect(() => {
+    if (placementMode !== 'connect') return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPlacementMode('none');
+        clearConnectFrom();
+        setConnectHovered(null);
+        setNearestSnap(null);
+        setConnectMousePos(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [placementMode, setPlacementMode, clearConnectFrom]);
+
   if (!page || !timeline) return <div>No page data</div>;
 
   return (
@@ -235,21 +413,33 @@ export function GanttChart() {
         <div className="gantt-header-sticky">
           <svg width={totalWidth} height={headerHeight}>
             <rect x={0} y={0} width={totalWidth} height={headerHeight} fill={tc.chartBg} />
-            <TimelineHeader timeline={timeline} headerWidth={headerWidth} zoomLevel={zoomLevel} />
+            <TimelineHeader timeline={timeline} headerWidth={headerWidth} zoomLevel={zoomLevel} fontScale={fontScale} />
             <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={headerHeight} zoomLevel={zoomLevel} region="header" />
           </svg>
         </div>
 
         {/* Body SVG */}
         <svg
+          ref={bodySvgRef}
           className="gantt-chart"
           width={totalWidth}
           height={bodyHeight}
           style={{ minWidth: totalWidth, cursor: placementMode !== 'none' ? 'crosshair' : undefined }}
           onClick={handleSvgClick}
+          onMouseMove={handleConnectMouseMove}
         >
           {/* Background */}
           <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
+
+          {/* Connection arrows (below swim lanes so bars remain clickable) */}
+          <ConnectionLayer
+            resolvedConnections={resolvedConns}
+            showMemos={showMemos}
+            selectedConnectionId={selectedConnectionId}
+            onConnectionClick={handleConnectionClick}
+            onConnectionDoubleClick={handleConnectionDoubleClick}
+            onConnectionContextMenu={handleConnectionContextMenu}
+          />
 
           {/* Swim lanes (y starts from 0) */}
           {page.swimLanes.map((lane, i) => {
@@ -264,6 +454,7 @@ export function GanttChart() {
                 headerWidth={headerWidth}
                 totalWidth={totalWidth}
                 zoomLevel={zoomLevel}
+                fontScale={fontScale}
                 selectedIds={selectedIds}
                 showMemos={showMemos}
                 onBarDoubleClick={(barId, laneId) => setEditBar({ barId, laneId })}
@@ -278,6 +469,19 @@ export function GanttChart() {
               />
             );
           })}
+
+          {/* Snap point overlay for connect mode */}
+          {placementMode === 'connect' && (
+            <SnapPointOverlay
+              page={page}
+              laneOffsets={laneOffsets}
+              posCtx={{ timeline, headerWidth, zoomLevel }}
+              hoveredItem={connectHovered}
+              connectFrom={connectFrom}
+              mousePos={connectMousePos}
+              nearestSnap={nearestSnap}
+            />
+          )}
 
           {/* Today line (body only — vertical line) */}
           <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={bodyHeight} zoomLevel={zoomLevel} region="body" />
@@ -306,14 +510,22 @@ export function GanttChart() {
               <button onClick={handleDuplicate}>Duplicate</button>
             )}
             {(contextMenu.type === 'bar' || contextMenu.type === 'milestone') && (
-              <button onClick={() => {
-                if (contextMenu.type === 'bar') {
-                  setEditBar({ barId: contextMenu.id, laneId: contextMenu.laneId });
-                } else {
-                  setEditMs({ msId: contextMenu.id, laneId: contextMenu.laneId });
-                }
-                setContextMenu(null);
-              }}>Edit</button>
+              <>
+                <button onClick={() => {
+                  if (contextMenu.type === 'bar') {
+                    setEditBar({ barId: contextMenu.id, laneId: contextMenu.laneId });
+                  } else {
+                    setEditMs({ msId: contextMenu.id, laneId: contextMenu.laneId });
+                  }
+                  setContextMenu(null);
+                }}>Edit</button>
+                {selected.filter((s) => s.type === 'bar' || s.type === 'milestone').length === 2 && (
+                  <button onClick={handleCreateConnection}>接続を作成</button>
+                )}
+              </>
+            )}
+            {contextMenu.type === 'connection' && (
+              <button onClick={() => { setEditConnection(contextMenu.id); setContextMenu(null); }}>編集...</button>
             )}
             {contextMenu.type === 'lane' && (
               <>
@@ -350,6 +562,13 @@ export function GanttChart() {
           pageId={currentPageId}
           laneId={editLaneTags}
           onClose={() => setEditLaneTags(null)}
+        />
+      )}
+      {editConnection && (
+        <ConnectionEditorDialog
+          pageId={currentPageId}
+          connectionId={editConnection}
+          onClose={() => setEditConnection(null)}
         />
       )}
     </div>

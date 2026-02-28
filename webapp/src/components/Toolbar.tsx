@@ -4,6 +4,8 @@ import { useUIStore } from '../hooks/useUIStore';
 import { AddItemPanel } from './AddItemPanel';
 import { SettingsPopover } from './SettingsPopover';
 import { LaneRegistryPanel } from './LaneRegistryPanel';
+import { ToolbarDropdown } from './ToolbarDropdown';
+import { HelpManual } from './HelpManual';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
 import { exportToPng, exportToPdf } from '../lib/client-export';
@@ -15,6 +17,7 @@ export function Toolbar() {
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-switch to Fixed when Day zoom is selected
@@ -58,7 +61,7 @@ export function Toolbar() {
     addLane(currentPageId, newLane);
   };
 
-  const togglePlacementMode = (mode: 'bar' | 'milestone') => {
+  const togglePlacementMode = (mode: 'bar' | 'milestone' | 'connect') => {
     setPlacementMode(placementMode === mode ? 'none' : mode);
   };
 
@@ -77,7 +80,6 @@ export function Toolbar() {
       } catch {
         alert('Failed to parse JSON file.');
       }
-      // Reset so the same file can be re-imported
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
@@ -86,42 +88,67 @@ export function Toolbar() {
   return (
     <>
       <div className="toolbar">
-        <button onClick={() => saveData()} disabled={!isDirty || isSaving}>
-          {isSaving ? 'Saving...' : 'Save'}
+        {/* Save */}
+        <button onClick={() => saveData()} disabled={!isDirty || isSaving} title={isSaving ? 'Saving...' : 'Save'}>
+          {isSaving ? '...' : '\u{1F4BE}'}
         </button>
+
+        {/* Undo / Redo */}
+        <button onClick={undo} disabled={!canUndo()} title="Undo">{'\u21A9'}</button>
+        <button onClick={redo} disabled={!canRedo()} title="Redo">{'\u21AA'}</button>
+
         <div className="separator" />
-        <button onClick={undo} disabled={!canUndo()}>Undo</button>
-        <button onClick={redo} disabled={!canRedo()}>Redo</button>
-        <div className="separator" />
-        <div className="editing-group">
-          <button onClick={() => setAddPanel('bar')}>+ Bar</button>
-          <button onClick={() => setAddPanel('milestone')}>+ Milestone</button>
-          <button onClick={handleAddLane}>+ Lane</button>
-          <button onClick={() => setShowLaneRegistry(true)}>Lanes</button>
-          <div className="separator" />
-          <button
-            className={placementMode === 'bar' ? 'toggle-active' : ''}
-            onClick={() => togglePlacementMode('bar')}
-            title="チャート上クリックでバー配置"
-          >
-            配置: Bar
-          </button>
-          <button
-            className={placementMode === 'milestone' ? 'toggle-active' : ''}
-            onClick={() => togglePlacementMode('milestone')}
-            title="チャート上クリックでマイルストン配置"
-          >
-            配置: MS
-          </button>
-        </div>
-        <div className="separator" />
-        <button className={showTooltips ? 'toggle-active' : ''} onClick={toggleTooltips}>
-          Tooltip {showTooltips ? 'ON' : 'OFF'}
+
+        {/* Add dropdown: +Bar, +Milestone, +Lane, Lanes */}
+        <ToolbarDropdown
+          trigger={<>+ {'\u25BC'}</>}
+          items={[
+            { label: 'Bar', onClick: () => setAddPanel('bar') },
+            { label: 'Milestone', onClick: () => setAddPanel('milestone') },
+            { label: 'Lane', onClick: handleAddLane },
+            { label: '\u30EC\u30FC\u30F3\u7BA1\u7406', onClick: () => setShowLaneRegistry(true) },
+          ]}
+        />
+
+        {/* Connect mode toggle */}
+        <button
+          className={placementMode === 'connect' ? 'toggle-active' : ''}
+          onClick={() => togglePlacementMode('connect')}
+          title="\u63A5\u7D9A\u30E2\u30FC\u30C9"
+        >
+          {'\u{1F517}'}
         </button>
-        <button className={showMemos ? 'toggle-active' : ''} onClick={toggleMemos}>
-          Memo {showMemos ? 'ON' : 'OFF'}
-        </button>
+
+        {/* Placement dropdown: Bar / Milestone */}
+        <ToolbarDropdown
+          trigger={<>{'\u914D\u7F6E'} {'\u25BC'}</>}
+          items={[
+            {
+              label: 'Bar',
+              onClick: () => togglePlacementMode('bar'),
+              active: placementMode === 'bar',
+            },
+            {
+              label: 'Milestone',
+              onClick: () => togglePlacementMode('milestone'),
+              active: placementMode === 'milestone',
+            },
+          ]}
+        />
+
         <div className="separator" />
+
+        {/* Tooltip / Memo toggles (compact) */}
+        <button className={showTooltips ? 'toggle-active' : ''} onClick={toggleTooltips} title="Tooltip ON/OFF">
+          Tip
+        </button>
+        <button className={showMemos ? 'toggle-active' : ''} onClick={toggleMemos} title="Memo ON/OFF">
+          Memo
+        </button>
+
+        <div className="separator" />
+
+        {/* Zoom level — segment control */}
         <div className="zoom-group">
           {(['day', 'month', 'quarter', 'year'] as ZoomLevel[]).map((level) => (
             <button
@@ -133,6 +160,8 @@ export function Toolbar() {
             </button>
           ))}
         </div>
+
+        {/* Display mode — segment control */}
         <div className="display-mode-group">
           {(['fixed', 'fit'] as DisplayMode[]).map((mode) => (
             <button
@@ -140,36 +169,58 @@ export function Toolbar() {
               className={displayMode === mode ? 'mode-active' : ''}
               onClick={() => setDisplayMode(mode)}
               disabled={mode === 'fit' && zoomLevel === 'day'}
-              title={mode === 'fixed' ? '固定列幅' : 'ウィンドウフィット'}
+              title={mode === 'fixed' ? '\u56FA\u5B9A\u5217\u5E45' : '\u30A6\u30A3\u30F3\u30C9\u30A6\u30D5\u30A3\u30C3\u30C8'}
             >
               {mode === 'fixed' ? 'Fixed' : 'Fit'}
             </button>
           ))}
         </div>
-        <button onClick={handleScrollToToday} title="今日の位置にスクロール">
-          Today
+
+        {/* Today */}
+        <button onClick={handleScrollToToday} title="\u4ECA\u65E5\u306E\u4F4D\u7F6E\u306B\u30B9\u30AF\u30ED\u30FC\u30EB">
+          {'\u{1F4CD}'}
         </button>
+
         <div className="separator" />
+
+        {/* Settings */}
         <div style={{ position: 'relative' }}>
           <button
             className={showSettings ? 'toggle-active' : ''}
             onClick={() => setShowSettings(!showSettings)}
-            title="フォントサイズ設定"
+            title="\u30D5\u30A9\u30F3\u30C8\u30B5\u30A4\u30BA\u8A2D\u5B9A"
           >
-            ⚙
+            {'\u2699'}
           </button>
           {showSettings && <SettingsPopover />}
         </div>
+
+        {/* Help */}
+        <button onClick={() => setShowHelp(true)} title="使い方マニュアル">
+          ?
+        </button>
+
+        {/* Theme toggle */}
         <button
           className="theme-toggle"
           onClick={toggleTheme}
-          title={themeMode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'}
+          title={themeMode === 'light' ? '\u30C0\u30FC\u30AF\u30E2\u30FC\u30C9\u306B\u5207\u66FF' : '\u30E9\u30A4\u30C8\u30E2\u30FC\u30C9\u306B\u5207\u66FF'}
         >
-          {themeMode === 'light' ? '🌙' : '☀️'}
+          {themeMode === 'light' ? '\u{1F319}' : '\u2600\uFE0F'}
         </button>
+
         <div className="separator" />
-        <button onClick={() => fileInputRef.current?.click()}>Import</button>
-        <button onClick={() => downloadData()}>Download</button>
+
+        {/* File operations dropdown */}
+        <ToolbarDropdown
+          trigger={<>{'\u22EF'} {'\u25BC'}</>}
+          items={[
+            { label: 'Import', onClick: () => fileInputRef.current?.click() },
+            { label: 'Download', onClick: () => downloadData() },
+            { label: 'PNG', onClick: () => handleExport('png') },
+            { label: 'PDF', onClick: () => handleExport('pdf') },
+          ]}
+        />
         <input
           ref={fileInputRef}
           type="file"
@@ -177,8 +228,8 @@ export function Toolbar() {
           style={{ display: 'none' }}
           onChange={handleImportFile}
         />
-        <button onClick={() => handleExport('png')}>PNG</button>
-        <button onClick={() => handleExport('pdf')}>PDF</button>
+
+        {/* Save status */}
         <span className={`save-status ${isDirty ? 'dirty' : ''}`}>
           {isDirty ? 'Unsaved changes' : 'Saved to browser'}
         </span>
@@ -190,6 +241,10 @@ export function Toolbar() {
 
       {showLaneRegistry && (
         <LaneRegistryPanel onClose={() => setShowLaneRegistry(false)} />
+      )}
+
+      {showHelp && (
+        <HelpManual onClose={() => setShowHelp(false)} />
       )}
     </>
   );

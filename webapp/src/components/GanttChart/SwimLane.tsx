@@ -13,6 +13,7 @@ interface Props {
   headerWidth: number;
   totalWidth: number;
   zoomLevel: ZoomLevel;
+  fontScale?: number;
   selectedIds?: Set<string>;
   showMemos?: boolean;
   onBarDoubleClick: (barId: string, laneId: string) => void;
@@ -27,12 +28,13 @@ interface Props {
 }
 
 export function SwimLaneComponent({
-  lane, pageId, yOffset, timeline, headerWidth, totalWidth, zoomLevel,
+  lane, pageId, yOffset, timeline, headerWidth, totalWidth, zoomLevel, fontScale = 1.0,
   selectedIds, showMemos,
   onBarDoubleClick, onMilestoneDoubleClick, onContextMenu, onItemClick,
   onLaneContextMenu, onLaneClick, isLaneSelected, onTooltipShow, onTooltipHide,
 }: Props) {
-  const fontSizeLaneTitle = useUIStore((s) => s.fontSizeLaneTitle);
+  const baseFontSizeLaneTitle = useUIStore((s) => s.fontSizeLaneTitle);
+  const fontSizeLaneTitle = baseFontSizeLaneTitle * fontScale;
   const tc = useThemeColors();
   const labelLines = lane.label.split('\n');
 
@@ -51,16 +53,87 @@ export function SwimLaneComponent({
           onLaneContextMenu?.(e, lane.id);
         }}
       />
-      {labelLines.map((line, i) => (
-        <text key={i}
-          x={headerWidth / 2}
-          y={yOffset + lane.heightPx / 2 + (i - (labelLines.length - 1) / 2) * (fontSizeLaneTitle + 4)}
-          textAnchor="middle" dominantBaseline="central"
-          fontSize={fontSizeLaneTitle} fontWeight="bold" fill={tc.laneLabelText}
-          style={{ pointerEvents: 'none' }}>
-          {line}
-        </text>
-      ))}
+      {labelLines.map((line, i) => {
+        const tags = lane.tags ?? [];
+        const tagAreaHeight = tags.length > 0 ? 14 : 0;
+        const labelBlockHeight = labelLines.length * (fontSizeLaneTitle + 4) + tagAreaHeight;
+        const labelStartY = yOffset + (lane.heightPx - labelBlockHeight) / 2 + fontSizeLaneTitle / 2;
+        return (
+          <text key={i}
+            x={headerWidth / 2}
+            y={labelStartY + i * (fontSizeLaneTitle + 4)}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize={fontSizeLaneTitle} fontWeight="bold" fill={tc.laneLabelText}
+            style={{ pointerEvents: 'none' }}>
+            {line}
+          </text>
+        );
+      })}
+
+      {/* Tag badges */}
+      {(() => {
+        const tags = lane.tags ?? [];
+        if (tags.length === 0) return null;
+        const tagFontSize = 8;
+        const tagPadX = 6;
+        const tagPadY = 2;
+        const tagHeight = tagFontSize + tagPadY * 2;
+        const tagGap = 4;
+        const labelBlockHeight = labelLines.length * (fontSizeLaneTitle + 4);
+        const tagAreaTop = yOffset + (lane.heightPx - labelBlockHeight - 14) / 2 + labelBlockHeight + 4;
+
+        // Measure tag widths (approximate: 5px per char + padding)
+        const charWidth = 5;
+        const tagWidths = tags.map((t) => t.length * charWidth + tagPadX * 2);
+
+        // Layout tags in rows that fit within headerWidth
+        const maxRowWidth = headerWidth - 8;
+        const rows: { tag: string; width: number }[][] = [];
+        let currentRow: { tag: string; width: number }[] = [];
+        let currentRowWidth = 0;
+        tags.forEach((tag, idx) => {
+          const w = tagWidths[idx];
+          if (currentRow.length > 0 && currentRowWidth + tagGap + w > maxRowWidth) {
+            rows.push(currentRow);
+            currentRow = [{ tag, width: w }];
+            currentRowWidth = w;
+          } else {
+            if (currentRow.length > 0) currentRowWidth += tagGap;
+            currentRow.push({ tag, width: w });
+            currentRowWidth += w;
+          }
+        });
+        if (currentRow.length > 0) rows.push(currentRow);
+
+        return (
+          <g style={{ pointerEvents: 'none' }}>
+            {rows.map((row, ri) => {
+              const rowWidth = row.reduce((s, t) => s + t.width, 0) + (row.length - 1) * tagGap;
+              let x = (headerWidth - rowWidth) / 2;
+              return row.map((item, ci) => {
+                const rx = x;
+                x += item.width + tagGap;
+                return (
+                  <g key={`${ri}-${ci}`}>
+                    <rect
+                      x={rx} y={tagAreaTop + ri * (tagHeight + 2)}
+                      width={item.width} height={tagHeight}
+                      rx={6} fill={tc.tagChipBg}
+                    />
+                    <text
+                      x={rx + item.width / 2} y={tagAreaTop + ri * (tagHeight + 2) + tagHeight / 2}
+                      textAnchor="middle" dominantBaseline="central"
+                      fontSize={tagFontSize} fill={tc.tagChipText}
+                    >
+                      {item.tag}
+                    </text>
+                  </g>
+                );
+              });
+            })}
+          </g>
+        );
+      })()}
 
       {/* Lane background */}
       <rect x={headerWidth} y={yOffset} width={totalWidth - headerWidth} height={lane.heightPx}
@@ -81,6 +154,7 @@ export function SwimLaneComponent({
           timeline={timeline}
           headerWidth={headerWidth}
           zoomLevel={zoomLevel}
+          fontScale={fontScale}
           laneHeight={lane.heightPx}
           isSelected={selectedIds?.has(bar.id)}
           showMemos={showMemos}
@@ -103,6 +177,7 @@ export function SwimLaneComponent({
           timeline={timeline}
           headerWidth={headerWidth}
           zoomLevel={zoomLevel}
+          fontScale={fontScale}
           laneHeight={lane.heightPx}
           isSelected={selectedIds?.has(ms.id)}
           showMemos={showMemos}

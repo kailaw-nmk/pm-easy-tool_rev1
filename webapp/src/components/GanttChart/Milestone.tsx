@@ -13,6 +13,7 @@ interface Props {
   timeline: PageTimeline;
   headerWidth: number;
   zoomLevel: ZoomLevel;
+  fontScale?: number;
   laneHeight: number;
   isSelected?: boolean;
   showMemos?: boolean;
@@ -26,12 +27,13 @@ interface Props {
 const DRAG_THRESHOLD = 3;
 
 export function MilestoneComponent({
-  milestone, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, laneHeight,
+  milestone, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, fontScale = 1.0, laneHeight,
   isSelected, showMemos, onDoubleClick, onContextMenu, onClick,
   onTooltipShow, onTooltipHide,
 }: Props) {
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
-  const fontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
+  const baseFontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
+  const fontSizeMilestone = baseFontSizeMilestone * fontScale;
   const tc = useThemeColors();
 
   const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };

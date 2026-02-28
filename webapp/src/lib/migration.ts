@@ -18,7 +18,20 @@ export function migrateData(data: ScheduleData): ScheduleData {
     migrated = migrateV2toV3(migrated);
   }
 
+  // v3.0.0 → v3.1.0
+  if (migrated.version === '3.0.0') {
+    migrated = migrateV3toV31(migrated);
+  }
+
   return migrated;
+}
+
+function migrateV3toV31(data: ScheduleData): ScheduleData {
+  const pages = data.pages.map((page) => ({
+    ...page,
+    connections: page.connections ?? [],
+  }));
+  return { ...data, version: '3.1.0', pages };
 }
 
 function migrateV2toV3(data: ScheduleData): ScheduleData {
