@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate } from '../types/schedule';
-import { API_BASE_URL, AUTO_SAVE_DELAY_MS } from '../lib/constants';
+import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
+import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
 
 interface HistoryEntry {
   data: ScheduleData;
@@ -47,8 +48,14 @@ interface ScheduleState {
   removePage: (pageId: string) => void;
   renamePage: (pageId: string, name: string) => void;
   reorderPage: (pageId: string, direction: 'left' | 'right') => void;
+  // Page-specific timeline
+  updatePageTimeline: (pageId: string, updates: { startDate?: string; endDate?: string }) => void;
+  updatePageMonthWidth: (pageId: string, widthPx: number) => void;
   // Timeline
   updateMonthWidth: (widthPx: number) => void;
+  // Import/Export
+  importData: (data: ScheduleData) => void;
+  downloadData: () => Promise<void>;
   // Undo/Redo
   undo: () => void;
   redo: () => void;
@@ -86,8 +93,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   historyIndex: -1,
 
   loadData: async () => {
-    const res = await fetch(`${API_BASE_URL}/schedule`);
-    const raw: ScheduleData = await res.json();
+    const raw = loadScheduleFromStorage();
+    if (!raw) {
+      set({ data: null });
+      return;
+    }
     const data = migrateData(raw);
     set({
       data,
@@ -103,11 +113,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     if (!data) return;
     set({ isSaving: true });
     try {
-      await fetch(`${API_BASE_URL}/schedule`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      saveScheduleToStorage(data);
       set({ isDirty: false, isSaving: false });
     } catch {
       set({ isSaving: false });
@@ -468,6 +474,54 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     });
   },
 
+  updatePageTimeline: (pageId, updates) => {
+    set((state) => {
+      if (!state.data) return {};
+      const page = state.data.pages.find((p) => p.id === pageId);
+      if (!page) return {};
+      // Determine effective current values
+      const current = page.timeline ?? state.data.timeline;
+      const newStart = updates.startDate ?? current.startDate;
+      const newEnd = updates.endDate ?? current.endDate;
+      if (newStart >= newEnd) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const draftPage = draft.pages.find((p) => p.id === pageId);
+        if (!draftPage) return;
+        if (!draftPage.timeline) {
+          const { startDate, endDate, monthWidthPx } = draft.timeline;
+          draftPage.timeline = { startDate, endDate, monthWidthPx };
+        }
+        if (updates.startDate) draftPage.timeline.startDate = updates.startDate;
+        if (updates.endDate) draftPage.timeline.endDate = updates.endDate;
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  updatePageMonthWidth: (pageId, widthPx) => {
+    set((state) => {
+      if (!state.data) return {};
+      const page = state.data.pages.find((p) => p.id === pageId);
+      if (!page) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const draftPage = draft.pages.find((p) => p.id === pageId);
+        if (!draftPage) return;
+        if (!draftPage.timeline) {
+          const { startDate, endDate, monthWidthPx } = draft.timeline;
+          draftPage.timeline = { startDate, endDate, monthWidthPx };
+        }
+        draftPage.timeline.monthWidthPx = Math.max(20, Math.min(120, widthPx));
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
   updateMonthWidth: (widthPx) => {
     set((state) => {
       const historyUpdate = pushHistory(state);
@@ -516,5 +570,54 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   canRedo: () => {
     const { historyIndex, history } = get();
     return historyIndex < history.length - 1;
+  },
+
+  importData: (rawData: ScheduleData) => {
+    const data = migrateData(rawData);
+    set({
+      data,
+      currentPageId: data.pages[0]?.id ?? 'p0',
+      isDirty: false,
+      history: [{ data: JSON.parse(JSON.stringify(data)) }],
+      historyIndex: 0,
+    });
+    // Save to server for session persistence
+    get().saveData();
+  },
+
+  downloadData: async () => {
+    const { data } = get();
+    if (!data) return;
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const defaultName = `schedule_${yyyy}${mm}${dd}.json`;
+    const json = JSON.stringify(data, null, 2);
+
+    // File System Access API が使える場合: ネイティブ保存ダイアログ
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        return;
+      } catch (e: any) {
+        if (e.name === 'AbortError') return; // ユーザーがキャンセル
+      }
+    }
+
+    // フォールバック: 従来の <a> ダウンロード
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultName;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 }));

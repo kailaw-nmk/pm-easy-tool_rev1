@@ -12,7 +12,6 @@ export const BAR_FONT_SIZE = 7;
 export const MILESTONE_FONT_SIZE = 7;
 export const SNAP_UNIT = 1; // months
 export const AUTO_SAVE_DELAY_MS = 5000;
-export const API_BASE_URL = '/api';
 export const DEFAULT_DAY_WIDTH = 20;
 export const MIN_DAY_WIDTH = 14;
 export const MIN_BAR_HEIGHT = 12;

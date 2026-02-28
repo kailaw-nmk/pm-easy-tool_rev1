@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useUIStore } from '../hooks/useUIStore';
 import { AddItemPanel } from './AddItemPanel';
@@ -6,14 +6,16 @@ import { SettingsPopover } from './SettingsPopover';
 import { LaneRegistryPanel } from './LaneRegistryPanel';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
+import { exportToPng, exportToPdf } from '../lib/client-export';
 import type { ZoomLevel, DisplayMode } from '../types/schedule';
 
 export function Toolbar() {
-  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane } = useScheduleStore();
+  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData } = useScheduleStore();
   const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-switch to Fixed when Day zoom is selected
   useEffect(() => {
@@ -33,20 +35,13 @@ export function Toolbar() {
   }, [data, currentPageId, zoomLevel]);
 
   const handleExport = async (format: 'png' | 'pdf') => {
+    const name = `schedule_${currentPageId}`;
     try {
-      const res = await fetch(`/api/export/${format}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId: currentPageId }),
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `schedule_${currentPageId}.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (format === 'png') {
+        await exportToPng(`${name}.png`);
+      } else {
+        await exportToPdf(`${name}.pdf`);
+      }
     } catch (err) {
       alert(`Export failed: ${err}`);
     }
@@ -67,6 +62,27 @@ export function Toolbar() {
     setPlacementMode(placementMode === mode ? 'none' : mode);
   };
 
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        if (!parsed.version || !parsed.timeline || !Array.isArray(parsed.pages)) {
+          alert('Invalid schedule JSON: missing required fields (version, timeline, pages)');
+          return;
+        }
+        importData(parsed);
+      } catch {
+        alert('Failed to parse JSON file.');
+      }
+      // Reset so the same file can be re-imported
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <>
       <div className="toolbar">
@@ -77,25 +93,27 @@ export function Toolbar() {
         <button onClick={undo} disabled={!canUndo()}>Undo</button>
         <button onClick={redo} disabled={!canRedo()}>Redo</button>
         <div className="separator" />
-        <button onClick={() => setAddPanel('bar')}>+ Bar</button>
-        <button onClick={() => setAddPanel('milestone')}>+ Milestone</button>
-        <button onClick={handleAddLane}>+ Lane</button>
-        <button onClick={() => setShowLaneRegistry(true)}>Lanes</button>
-        <div className="separator" />
-        <button
-          className={placementMode === 'bar' ? 'toggle-active' : ''}
-          onClick={() => togglePlacementMode('bar')}
-          title="チャート上クリックでバー配置"
-        >
-          配置: Bar
-        </button>
-        <button
-          className={placementMode === 'milestone' ? 'toggle-active' : ''}
-          onClick={() => togglePlacementMode('milestone')}
-          title="チャート上クリックでマイルストン配置"
-        >
-          配置: MS
-        </button>
+        <div className="editing-group">
+          <button onClick={() => setAddPanel('bar')}>+ Bar</button>
+          <button onClick={() => setAddPanel('milestone')}>+ Milestone</button>
+          <button onClick={handleAddLane}>+ Lane</button>
+          <button onClick={() => setShowLaneRegistry(true)}>Lanes</button>
+          <div className="separator" />
+          <button
+            className={placementMode === 'bar' ? 'toggle-active' : ''}
+            onClick={() => togglePlacementMode('bar')}
+            title="チャート上クリックでバー配置"
+          >
+            配置: Bar
+          </button>
+          <button
+            className={placementMode === 'milestone' ? 'toggle-active' : ''}
+            onClick={() => togglePlacementMode('milestone')}
+            title="チャート上クリックでマイルストン配置"
+          >
+            配置: MS
+          </button>
+        </div>
         <div className="separator" />
         <button className={showTooltips ? 'toggle-active' : ''} onClick={toggleTooltips}>
           Tooltip {showTooltips ? 'ON' : 'OFF'}
@@ -150,10 +168,19 @@ export function Toolbar() {
           {themeMode === 'light' ? '🌙' : '☀️'}
         </button>
         <div className="separator" />
+        <button onClick={() => fileInputRef.current?.click()}>Import</button>
+        <button onClick={() => downloadData()}>Download</button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleImportFile}
+        />
         <button onClick={() => handleExport('png')}>PNG</button>
         <button onClick={() => handleExport('pdf')}>PDF</button>
         <span className={`save-status ${isDirty ? 'dirty' : ''}`}>
-          {isDirty ? 'Unsaved changes' : 'All saved'}
+          {isDirty ? 'Unsaved changes' : 'Saved to browser'}
         </span>
       </div>
 

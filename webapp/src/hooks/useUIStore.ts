@@ -1,22 +1,11 @@
 import { create } from 'zustand';
-import type { ZoomLevel, DisplayMode } from '../types/schedule';
+import type { ZoomLevel, DisplayMode, DisplaySettings } from '../types/schedule';
 import type { ThemeMode } from '../lib/theme';
-import { API_BASE_URL } from '../lib/constants';
+import { loadSettingsFromStorage, saveSettingsToStorage } from '../lib/storage';
 
 type PlacementMode = 'none' | 'bar' | 'milestone';
 
-interface SettingsPayload {
-  fontSizeLaneTitle: number;
-  fontSizeBarText: number;
-  fontSizeMilestone: number;
-  zoomLevel: ZoomLevel;
-  displayMode: DisplayMode;
-  showTooltips: boolean;
-  showMemos: boolean;
-  themeMode: ThemeMode;
-}
-
-function extractSettings(state: UIState): SettingsPayload {
+function extractSettings(state: UIState): DisplaySettings {
   return {
     fontSizeLaneTitle: state.fontSizeLaneTitle,
     fontSizeBarText: state.fontSizeBarText,
@@ -35,11 +24,7 @@ function scheduleSettingsSave(getState: () => UIState) {
   if (settingsSaveTimer) clearTimeout(settingsSaveTimer);
   settingsSaveTimer = setTimeout(() => {
     const settings = extractSettings(getState());
-    fetch(`${API_BASE_URL}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    }).catch(() => {});
+    saveSettingsToStorage(settings);
   }, 1000);
 }
 
@@ -125,24 +110,20 @@ export const useUIStore = create<UIState>((set, get) => ({
   }),
 
   loadSettings: async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/settings`);
-      if (!res.ok) return;
-      const settings = await res.json();
-      set({
-        fontSizeLaneTitle: settings.fontSizeLaneTitle ?? 8,
-        fontSizeBarText: settings.fontSizeBarText ?? 7,
-        fontSizeMilestone: settings.fontSizeMilestone ?? 7,
-        zoomLevel: settings.zoomLevel ?? 'month',
-        displayMode: settings.displayMode ?? 'fixed',
-        showTooltips: settings.showTooltips ?? true,
-        showMemos: settings.showMemos ?? true,
-        themeMode: settings.themeMode ?? 'light',
-      });
-      // Sync theme to localStorage
-      if (settings.themeMode) {
-        try { localStorage.setItem('tos-theme', settings.themeMode); } catch {}
-      }
-    } catch {}
+    const settings = loadSettingsFromStorage();
+    if (!settings) return;
+    set({
+      fontSizeLaneTitle: settings.fontSizeLaneTitle ?? 8,
+      fontSizeBarText: settings.fontSizeBarText ?? 7,
+      fontSizeMilestone: settings.fontSizeMilestone ?? 7,
+      zoomLevel: settings.zoomLevel ?? 'month',
+      displayMode: settings.displayMode ?? 'fixed',
+      showTooltips: settings.showTooltips ?? true,
+      showMemos: settings.showMemos ?? true,
+      themeMode: settings.themeMode ?? 'light',
+    });
+    if (settings.themeMode) {
+      try { localStorage.setItem('tos-theme', settings.themeMode); } catch {}
+    }
   },
 }));

@@ -3,6 +3,7 @@ import { useScheduleStore } from './hooks/useScheduleStore';
 import { useSelectionStore } from './hooks/useSelectionStore';
 import { useUIStore } from './hooks/useUIStore';
 import { Toolbar } from './components/Toolbar';
+import { EmptyState } from './components/EmptyState';
 import { PageTabs } from './components/PageTabs';
 import { GanttChart } from './components/GanttChart/GanttChart';
 import { setGanttContainer, getGanttContainer } from './lib/gantt-refs';
@@ -127,7 +128,7 @@ export default function App() {
   }, [handleKeyDown]);
 
   if (!data) {
-    return <div className="loading">Loading schedule data...</div>;
+    return <EmptyState />;
   }
 
   const setRef = (el: HTMLDivElement | null) => {
