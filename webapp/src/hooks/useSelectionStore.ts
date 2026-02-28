@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export interface SelectedItem {
-  type: 'bar' | 'milestone';
+  type: 'bar' | 'milestone' | 'lane';
   id: string;
   laneId: string;
 }
@@ -19,12 +19,18 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
 
   select: (item, multi = false) => {
     set((state) => {
+      // Lane selection is exclusive — clear other types
+      if (item.type === 'lane') {
+        return { selected: [item] };
+      }
+      // Selecting bar/milestone clears any lane selection
+      const filtered = state.selected.filter((s) => s.type !== 'lane');
       if (multi) {
-        const exists = state.selected.find((s) => s.id === item.id);
+        const exists = filtered.find((s) => s.id === item.id);
         if (exists) {
-          return { selected: state.selected.filter((s) => s.id !== item.id) };
+          return { selected: filtered.filter((s) => s.id !== item.id) };
         }
-        return { selected: [...state.selected, item] };
+        return { selected: [...filtered, item] };
       }
       return { selected: [item] };
     });

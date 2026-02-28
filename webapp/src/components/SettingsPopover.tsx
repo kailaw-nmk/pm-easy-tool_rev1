@@ -9,8 +9,10 @@ export function SettingsPopover() {
     displayMode,
   } = useUIStore();
 
-  const { data, updateTimeline, updateMonthWidth } = useScheduleStore();
-  const timeline = data?.timeline;
+  const { data, currentPageId, updateTimeline, updateMonthWidth, updatePageTimeline, updatePageMonthWidth } = useScheduleStore();
+  const page = data?.pages.find((p) => p.id === currentPageId);
+  const hasPageTimeline = !!page?.timeline;
+  const timeline = page?.timeline ?? data?.timeline;
 
   return (
     <div className="settings-popover">
@@ -39,7 +41,14 @@ export function SettingsPopover() {
           <div className="settings-row">
             <label>月幅</label>
             <input type="range" min={20} max={120} value={timeline.monthWidthPx}
-              onChange={(e) => updateMonthWidth(Number(e.target.value))} />
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (hasPageTimeline) {
+                  updatePageMonthWidth(currentPageId, v);
+                } else {
+                  updateMonthWidth(v);
+                }
+              }} />
             <span>{timeline.monthWidthPx}px</span>
           </div>
         </>
@@ -51,12 +60,26 @@ export function SettingsPopover() {
           <div className="settings-row">
             <label>開始</label>
             <input type="month" value={timeline.startDate.substring(0, 7)}
-              onChange={(e) => updateTimeline({ startDate: e.target.value })} />
+              onChange={(e) => {
+                const v = e.target.value;
+                if (hasPageTimeline) {
+                  updatePageTimeline(currentPageId, { startDate: v });
+                } else {
+                  updateTimeline({ startDate: v });
+                }
+              }} />
           </div>
           <div className="settings-row">
             <label>終了</label>
             <input type="month" value={timeline.endDate.substring(0, 7)}
-              onChange={(e) => updateTimeline({ endDate: e.target.value })} />
+              onChange={(e) => {
+                const v = e.target.value;
+                if (hasPageTimeline) {
+                  updatePageTimeline(currentPageId, { endDate: v });
+                } else {
+                  updateTimeline({ endDate: v });
+                }
+              }} />
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 import type { ScheduleData, DisplaySettings } from '../types/schedule';
 
-const SCHEDULE_KEY = 'tos-schedule-data';
-const SETTINGS_KEY = 'tos-display-settings';
+const SCHEDULE_KEY = 'schedule-data';
+const SETTINGS_KEY = 'display-settings';
 
 export function loadScheduleFromStorage(): ScheduleData | null {
   try {

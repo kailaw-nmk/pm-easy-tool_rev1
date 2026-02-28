@@ -20,6 +20,8 @@ interface Props {
   onContextMenu: (e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => void;
   onItemClick?: (e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => void;
   onLaneContextMenu?: (e: React.MouseEvent, laneId: string) => void;
+  onLaneClick?: (e: React.MouseEvent, laneId: string) => void;
+  isLaneSelected?: boolean;
   onTooltipShow?: (text: string, x: number, y: number) => void;
   onTooltipHide?: () => void;
 }
@@ -28,7 +30,7 @@ export function SwimLaneComponent({
   lane, pageId, yOffset, timeline, headerWidth, totalWidth, zoomLevel,
   selectedIds, showMemos,
   onBarDoubleClick, onMilestoneDoubleClick, onContextMenu, onItemClick,
-  onLaneContextMenu, onTooltipShow, onTooltipHide,
+  onLaneContextMenu, onLaneClick, isLaneSelected, onTooltipShow, onTooltipHide,
 }: Props) {
   const fontSizeLaneTitle = useUIStore((s) => s.fontSizeLaneTitle);
   const tc = useThemeColors();
@@ -38,7 +40,12 @@ export function SwimLaneComponent({
     <g className="swim-lane">
       {/* Lane label */}
       <rect x={0} y={yOffset} width={headerWidth} height={lane.heightPx}
-        fill={tc.laneLabelBg} stroke={tc.laneBorder} strokeWidth={1}
+        fill={isLaneSelected ? tc.accentLight : tc.laneLabelBg} stroke={tc.laneBorder} strokeWidth={1}
+        style={{ cursor: 'pointer' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onLaneClick?.(e, lane.id);
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           onLaneContextMenu?.(e, lane.id);

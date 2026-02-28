@@ -77,6 +77,17 @@ export interface SchedulePage {
   filterTags?: string[];
 }
 
+export interface DisplaySettings {
+  fontSizeLaneTitle: number;
+  fontSizeBarText: number;
+  fontSizeMilestone: number;
+  zoomLevel: ZoomLevel;
+  displayMode: DisplayMode;
+  showTooltips: boolean;
+  showMemos: boolean;
+  themeMode: 'light' | 'dark';
+}
+
 export interface ScheduleData {
   version: string;
   lastModified: string;
@@ -85,4 +96,5 @@ export interface ScheduleData {
   };
   pages: SchedulePage[];
   laneRegistry?: LaneTemplate[];
+  settings?: DisplaySettings;
 }

@@ -98,13 +98,13 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   setContainerWidth: (width) => set({ containerWidth: width }),
   setThemeMode: (mode) => {
-    try { localStorage.setItem('tos-theme', mode); } catch {}
+    try { localStorage.setItem('app-theme', mode); } catch {}
     set({ themeMode: mode });
     scheduleSettingsSave(get);
   },
   toggleTheme: () => set((s) => {
     const next = s.themeMode === 'light' ? 'dark' : 'light';
-    try { localStorage.setItem('tos-theme', next); } catch {}
+    try { localStorage.setItem('app-theme', next); } catch {}
     setTimeout(() => scheduleSettingsSave(get), 0);
     return { themeMode: next };
   }),
@@ -123,7 +123,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       themeMode: settings.themeMode ?? 'light',
     });
     if (settings.themeMode) {
-      try { localStorage.setItem('tos-theme', settings.themeMode); } catch {}
+      try { localStorage.setItem('app-theme', settings.themeMode); } catch {}
     }
   },
 }));

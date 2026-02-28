@@ -1,46 +1,55 @@
-# C:\development - 汎用業務ワークスペース
+# Schedule Manager
 
-Claude Code を使った各種業務資料の作成・調査用ワークスペース。
+A browser-based Gantt chart management tool built with React, Vite, and TypeScript.
 
-## 使い方
+## Features
 
-```powershell
-cd C:\development
-claude
+- Interactive Gantt chart display with multiple zoom levels (day / week / month / quarter)
+- Drag-and-drop bar editing (move, resize)
+- Swim lane management (add, reorder, group)
+- Milestone markers
+- PNG / PDF export
+- Data persistence via localStorage
+- Light / Dark theme support
+- Responsive layout with fixed and auto display modes
+
+## Tech Stack
+
+- **Frontend:** React 19 + TypeScript
+- **Build:** Vite 6
+- **State:** Zustand
+- **Export:** html2canvas + jsPDF
+
+## Getting Started
+
+```bash
+cd webapp
+npm install
+npm run dev
 ```
 
-サブディレクトリを案件ごとに作成し、関連資料をまとめて作業する。
+The app runs at `http://localhost:5173` by default.
 
-## カスタムコマンド
+## Build
 
-| コマンド | 用途 |
-|---|---|
-| `/project:new-workspace [テーマ]` | 新しい作業ディレクトリを作成 |
-| `/project:create-doc [内容]` | ドキュメント作成（docx/xlsx/pptx/pdf/md） |
-| `/project:create-diagram [内容]` | draw.io ダイアグラム作成 |
-| `/project:analyze [対象]` | 資料の調査・分析 |
-| `/project:convert [対象]` | ファイル形式変換 |
-
-## MCP サーバー
-
-| サーバー | 用途 |
-|---|---|
-| drawio-mcp-server | draw.io ダイアグラム作成・編集 |
-| sequential-thinking | 複雑なタスクの段階的分解 |
-
-## ディレクトリ例
-
+```bash
+cd webapp
+npm run build
 ```
-C:\development\
-├── 契約書レビュー/
-│   ├── 元契約書.pdf
-│   └── レビューメモ.docx
-├── 2026Q1-事業計画/
-│   ├── 事業計画書.pptx
-│   └── 収支計画.xlsx
-├── システム設計-顧客管理/
-│   ├── 要件定義.md
-│   ├── er-顧客管理.drawio
-│   └── flow-受注処理.drawio
-└── ...
-```
+
+Output is generated in `webapp/dist/`.
+
+## Deploy (Vercel)
+
+This project is configured for Vercel static SPA deployment.
+
+- **Framework Preset:** Vite
+- **Root Directory:** `webapp`
+- **Build Command:** `npm run build`
+- **Output Directory:** `dist`
+
+Rewrites are configured in `webapp/vercel.json` to support client-side routing.
+
+## License
+
+MIT

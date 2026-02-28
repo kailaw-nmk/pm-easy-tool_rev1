@@ -1,5 +1,5 @@
 {
-  "name": "tos-schedule-manager",
+  "name": "schedule-manager",
   "version": "1.0.0",
   "private": true,
   "type": "module",

@@ -1,31 +1,33 @@
 @echo off
 chcp 65001 >nul
-title ToS Schedule Manager
+title Schedule Manager
 
 cd /d "%~dp0webapp"
 
 echo ========================================
-echo   ToS Schedule Manager
+echo   Schedule Manager
 echo ========================================
 echo.
 
+where node >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] Node.js が見つかりません。
+    echo   https://nodejs.org/ からインストールしてください。
+    echo.
+    pause
+    exit /b 1
+)
+
 if not exist "node_modules" (
-    echo [SETUP] Installing dependencies...
+    echo [SETUP] 初回セットアップ中...
     call npm install
     echo.
 )
 
-if not exist "data\schedule.json" (
-    echo [SETUP] Importing draw.io data...
-    call npm run import
-    echo.
-)
-
-echo [START] Starting servers...
-echo   Frontend: http://localhost:5173
-echo   Backend:  http://localhost:3001
+echo [START] 起動中...
+echo   http://localhost:5173 をブラウザで開きます
 echo.
-echo   Press Ctrl+C to stop.
+echo   終了するにはこのウィンドウを閉じてください。
 echo ========================================
 echo.
 

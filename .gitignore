@@ -18,6 +18,11 @@ dist/
 # Secret
 secret/
 
+# User data
+schedule/
+仕様書.md
+PROGRESS.md
+
 # Temp
 *.tmp
 ~$*

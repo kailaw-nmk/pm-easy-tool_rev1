@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useSelectionStore } from '../../hooks/useSelectionStore';
 import { useUIStore } from '../../hooks/useUIStore';
@@ -187,6 +187,35 @@ export function GanttChart() {
     select({ type, id, laneId }, multi);
   }, [select]);
 
+  const handleLaneClick = useCallback((e: React.MouseEvent, laneId: string) => {
+    e.stopPropagation();
+    select({ type: 'lane', id: laneId, laneId });
+  }, [select]);
+
+  // Delete key handler for selected items
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selected.length > 0) {
+        // Don't delete if an input/textarea is focused
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        for (const item of selected) {
+          if (item.type === 'lane') {
+            removeLane(currentPageId, item.laneId);
+          } else if (item.type === 'bar') {
+            deleteBar(currentPageId, item.laneId, item.id);
+          } else if (item.type === 'milestone') {
+            deleteMilestone(currentPageId, item.laneId, item.id);
+          }
+        }
+        clearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selected, currentPageId, deleteBar, deleteMilestone, removeLane, clearSelection]);
+
   const handleTooltipShow = useCallback((text: string, x: number, y: number) => {
     if (showTooltips) {
       setTooltip({ text, x, y: y + 8 });
@@ -242,6 +271,8 @@ export function GanttChart() {
                 onContextMenu={handleContextMenu}
                 onItemClick={handleItemClick}
                 onLaneContextMenu={handleLaneContextMenu}
+                onLaneClick={handleLaneClick}
+                isLaneSelected={selectedIds.has(lane.id)}
                 onTooltipShow={handleTooltipShow}
                 onTooltipHide={handleTooltipHide}
               />

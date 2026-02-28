@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ToS スケジュール管理</title>
+    <title>Schedule Manager</title>
     <script>
       // Prevent theme flash on load
       (function() {
         try {
-          var t = localStorage.getItem('tos-theme');
+          var t = localStorage.getItem('app-theme');
           if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', t);
           if (t === 'dark') document.documentElement.style.background = '#09090b';
