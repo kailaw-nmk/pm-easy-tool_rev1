@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secret
+secret/
+
+# User data
+schedule/
+仕様書.md
+PROGRESS.md
+
+# Temp
+*.tmp
+~$*

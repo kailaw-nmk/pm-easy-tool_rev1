@@ -1,0 +1,17 @@
+export const DEFAULT_MONTH_WIDTH = 55;
+export const LANE_HEADER_WIDTH = 140;
+export const HEADER_HEIGHT = 94; // year(25) + quarter(22) + month(22) + gaps
+export const YEAR_HEADER_HEIGHT = 25;
+export const QUARTER_HEADER_HEIGHT = 22;
+export const MONTH_HEADER_HEIGHT = 22;
+export const YEAR_HEADER_Y = 20;
+export const QUARTER_HEADER_Y = 48;
+export const MONTH_HEADER_Y = 72;
+export const BAR_BORDER_RADIUS = 4;
+export const BAR_FONT_SIZE = 7;
+export const MILESTONE_FONT_SIZE = 7;
+export const SNAP_UNIT = 1; // months
+export const AUTO_SAVE_DELAY_MS = 5000;
+export const DEFAULT_DAY_WIDTH = 20;
+export const MIN_DAY_WIDTH = 14;
+export const MIN_BAR_HEIGHT = 12;
