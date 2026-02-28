@@ -150,6 +150,13 @@ body,
   background: var(--color-surface);
 }
 
+/* Context menu overlay — closes menu on outside click */
+.context-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
 /* Context menu — Vercel-style floating menu */
 .context-menu {
   position: fixed;
@@ -160,6 +167,34 @@ body,
   z-index: 1000;
   min-width: 160px;
   padding: 4px;
+}
+
+.context-menu-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.context-menu-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.context-menu-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 .context-menu button {

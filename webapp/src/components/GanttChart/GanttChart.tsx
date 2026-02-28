@@ -293,33 +293,39 @@ export function GanttChart() {
 
       {/* Context menu */}
       {contextMenu && (
-        <div
-          className="context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          {contextMenu.type === 'bar' && (
-            <button onClick={handleDuplicate}>Duplicate</button>
-          )}
-          {(contextMenu.type === 'bar' || contextMenu.type === 'milestone') && (
-            <button onClick={() => {
-              if (contextMenu.type === 'bar') {
-                setEditBar({ barId: contextMenu.id, laneId: contextMenu.laneId });
-              } else {
-                setEditMs({ msId: contextMenu.id, laneId: contextMenu.laneId });
-              }
-              setContextMenu(null);
-            }}>Edit</button>
-          )}
-          {contextMenu.type === 'lane' && (
-            <>
-              <button onClick={handleLaneHeightPrompt}>高さ設定...</button>
-              <button onClick={() => { setEditLaneTags(contextMenu.laneId); setContextMenu(null); }}>タグ編集...</button>
-              <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'up'); setContextMenu(null); }}>上に移動</button>
-              <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'down'); setContextMenu(null); }}>下に移動</button>
-            </>
-          )}
-          <button className="danger" onClick={handleDelete}>Delete</button>
-        </div>
+        <>
+          <div className="context-menu-overlay" onClick={closeContextMenu} onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }} />
+          <div
+            className="context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <div className="context-menu-header">
+              <button className="context-menu-close" onClick={closeContextMenu}>✕</button>
+            </div>
+            {contextMenu.type === 'bar' && (
+              <button onClick={handleDuplicate}>Duplicate</button>
+            )}
+            {(contextMenu.type === 'bar' || contextMenu.type === 'milestone') && (
+              <button onClick={() => {
+                if (contextMenu.type === 'bar') {
+                  setEditBar({ barId: contextMenu.id, laneId: contextMenu.laneId });
+                } else {
+                  setEditMs({ msId: contextMenu.id, laneId: contextMenu.laneId });
+                }
+                setContextMenu(null);
+              }}>Edit</button>
+            )}
+            {contextMenu.type === 'lane' && (
+              <>
+                <button onClick={handleLaneHeightPrompt}>高さ設定...</button>
+                <button onClick={() => { setEditLaneTags(contextMenu.laneId); setContextMenu(null); }}>タグ編集...</button>
+                <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'up'); setContextMenu(null); }}>上に移動</button>
+                <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'down'); setContextMenu(null); }}>下に移動</button>
+              </>
+            )}
+            <button className="danger" onClick={handleDelete}>Delete</button>
+          </div>
+        </>
       )}
 
       {/* Edit dialogs */}
