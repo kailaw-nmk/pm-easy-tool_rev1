@@ -1,26 +1,26 @@
 # Schedule Manager
 
-A browser-based Gantt chart management tool built with React, Vite, and TypeScript.
+ブラウザで動くガントチャート管理ツール。React + Vite + TypeScript で構築。
 
-## Features
+## 機能
 
-- Interactive Gantt chart display with multiple zoom levels (day / week / month / quarter)
-- Drag-and-drop bar editing (move, resize)
-- Swim lane management (add, reorder, group)
-- Milestone markers
-- PNG / PDF export
-- Data persistence via localStorage
-- Light / Dark theme support
-- Responsive layout with fixed and auto display modes
+- ガントチャート表示（日 / 週 / 月 / 四半期のズーム切替）
+- ドラッグ＆ドロップによるバー編集（移動・リサイズ）
+- スイムレーン管理（追加・並び替え・グループ化）
+- マイルストーン表示
+- PNG / PDF エクスポート
+- localStorage によるデータ自動保存
+- ライト / ダークテーマ切替
+- 固定幅 / 自動幅の表示モード
 
-## Tech Stack
+## 技術スタック
 
-- **Frontend:** React 19 + TypeScript
-- **Build:** Vite 6
-- **State:** Zustand
-- **Export:** html2canvas + jsPDF
+- **フロントエンド:** React 19 + TypeScript
+- **ビルド:** Vite 6
+- **状態管理:** Zustand
+- **エクスポート:** html2canvas + jsPDF
 
-## Getting Started
+## はじめかた
 
 ```bash
 cd webapp
@@ -28,28 +28,30 @@ npm install
 npm run dev
 ```
 
-The app runs at `http://localhost:5173` by default.
+`http://localhost:5173` で起動します。
 
-## Build
+Windows の場合はルートの `start.bat` をダブルクリックでも起動できます。
+
+## ビルド
 
 ```bash
 cd webapp
 npm run build
 ```
 
-Output is generated in `webapp/dist/`.
+`webapp/dist/` に出力されます。
 
-## Deploy (Vercel)
+## デプロイ (Vercel)
 
-This project is configured for Vercel static SPA deployment.
+Vercel の静的 SPA デプロイに対応しています。
 
 - **Framework Preset:** Vite
 - **Root Directory:** `webapp`
 - **Build Command:** `npm run build`
 - **Output Directory:** `dist`
 
-Rewrites are configured in `webapp/vercel.json` to support client-side routing.
+クライアントサイドルーティング用のリライトは `webapp/vercel.json` で設定済みです。
 
-## License
+## ライセンス
 
 MIT
