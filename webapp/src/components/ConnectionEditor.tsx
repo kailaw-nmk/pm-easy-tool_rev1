@@ -19,6 +19,7 @@ export function ConnectionEditorDialog({ pageId, connectionId, onClose }: Props)
   const [lineType, setLineType] = useState<ConnectionLineType>(connection?.lineType ?? 'orthogonal');
   const [memo, setMemo] = useState(connection?.memo ?? '');
   const [color, setColor] = useState(connection?.color ?? '#888888');
+  const [strokeWidth, setStrokeWidth] = useState(connection?.strokeWidth ?? 1.5);
 
   if (!connection) return null;
 
@@ -27,6 +28,7 @@ export function ConnectionEditorDialog({ pageId, connectionId, onClose }: Props)
       lineType,
       memo: memo || undefined,
       color: color || undefined,
+      strokeWidth,
     });
     onClose();
   };
@@ -63,6 +65,13 @@ export function ConnectionEditorDialog({ pageId, connectionId, onClose }: Props)
           <label>色</label>
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
             style={{ width: 48, height: 32, padding: 0, border: 'none', cursor: 'pointer' }}
+          />
+        </div>
+        <div className="field">
+          <label>線の太さ: {strokeWidth}px</label>
+          <input type="range" min={0.5} max={30} step={0.5} value={strokeWidth}
+            onChange={(e) => setStrokeWidth(Number(e.target.value))}
+            style={{ width: '100%' }}
           />
         </div>
         <div className="actions">

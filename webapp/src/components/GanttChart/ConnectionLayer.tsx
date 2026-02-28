@@ -81,7 +81,8 @@ export function ConnectionLayer({
           : isHovered
             ? lightenColor(baseColor, 60)
             : baseColor;
-        const strokeWidth = isSelected ? 2.5 : isHovered ? 2 : 1.5;
+        const baseWidth = connection.strokeWidth ?? 1.5;
+        const strokeWidth = isSelected ? baseWidth + 1 : isHovered ? baseWidth + 0.5 : baseWidth;
         const markerId = isSelected ? 'arrowhead-selected' : isHovered ? 'arrowhead-hovered' : 'arrowhead';
 
         let pathD: string;
@@ -116,7 +117,7 @@ export function ConnectionLayer({
             <path
               d={pathD}
               stroke="transparent"
-              strokeWidth={12}
+              strokeWidth={Math.max(12, baseWidth + 8)}
               fill="none"
               style={{ cursor: 'pointer' }}
               onClick={(e) => { e.stopPropagation(); onConnectionClick?.(e, connection.id); }}

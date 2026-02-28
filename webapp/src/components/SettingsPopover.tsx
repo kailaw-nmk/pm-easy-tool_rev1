@@ -18,19 +18,19 @@ export function SettingsPopover() {
     <div className="settings-popover">
       <div className="settings-row">
         <label>レーンタイトル</label>
-        <input type="range" min={5} max={16} value={fontSizeLaneTitle}
+        <input type="range" min={5} max={50} value={fontSizeLaneTitle}
           onChange={(e) => setFontSizeLaneTitle(Number(e.target.value))} />
         <span>{fontSizeLaneTitle}px</span>
       </div>
       <div className="settings-row">
         <label>バーテキスト</label>
-        <input type="range" min={5} max={16} value={fontSizeBarText}
+        <input type="range" min={5} max={50} value={fontSizeBarText}
           onChange={(e) => setFontSizeBarText(Number(e.target.value))} />
         <span>{fontSizeBarText}px</span>
       </div>
       <div className="settings-row">
         <label>マイルストーン</label>
-        <input type="range" min={5} max={16} value={fontSizeMilestone}
+        <input type="range" min={5} max={50} value={fontSizeMilestone}
           onChange={(e) => setFontSizeMilestone(Number(e.target.value))} />
         <span>{fontSizeMilestone}px</span>
       </div>

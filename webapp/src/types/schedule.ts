@@ -70,6 +70,7 @@ export interface Connection {
   lineType: ConnectionLineType;
   memo?: string;
   color?: string;
+  strokeWidth?: number;
 }
 
 export interface Annotation {
