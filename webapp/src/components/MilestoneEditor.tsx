@@ -44,7 +44,13 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
         <h3>Edit Milestone</h3>
         <div className="field">
           <label>Label</label>
-          <input value={label} onChange={(e) => setLabel(e.target.value)} />
+          <textarea value={label} onChange={(e) => setLabel(e.target.value)} rows={2}
+            style={{
+              width: '100%', padding: '8px 10px',
+              border: `1px solid ${tc.inputBorder}`, borderRadius: '6px',
+              fontSize: '14px', fontFamily: 'inherit', resize: 'vertical',
+              background: tc.inputBg, color: tc.textPrimary,
+            }} />
         </div>
         <div className="field">
           <label>Date (YYYY-MM)</label>
