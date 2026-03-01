@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection } from '../types/schedule';
+import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine } from '../types/schedule';
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
 import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
@@ -37,6 +37,7 @@ interface ScheduleState {
   addLane: (pageId: string, lane: SwimLane) => void;
   removeLane: (pageId: string, laneId: string) => void;
   reorderLane: (pageId: string, laneId: string, direction: 'up' | 'down') => void;
+  moveLane: (pageId: string, laneId: string, newIndex: number) => void;
   // Tag operations
   updateLaneTags: (pageId: string, laneId: string, tags: string[]) => void;
   // Registry operations
@@ -57,6 +58,10 @@ interface ScheduleState {
   addConnection: (pageId: string, connection: Connection) => void;
   updateConnection: (pageId: string, connectionId: string, updates: Partial<Connection>) => void;
   deleteConnection: (pageId: string, connectionId: string) => void;
+  // ScheduleLine operations
+  addScheduleLine: (pageId: string, line: ScheduleLine) => void;
+  updateScheduleLine: (pageId: string, lineId: string, updates: Partial<ScheduleLine>) => void;
+  deleteScheduleLine: (pageId: string, lineId: string) => void;
   // Import/Export
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
@@ -264,6 +269,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             (c) => c.fromItemId !== msId && c.toItemId !== msId
           );
         }
+        if (page.scheduleLines) {
+          page.scheduleLines = page.scheduleLines.filter(
+            (sl) => sl.sourceItemId !== msId
+          );
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -324,10 +334,18 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const newData = produce(state.data!, (draft) => {
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page) return;
+        // Collect milestone IDs in this lane for schedule line cascade
+        const laneObj = page.swimLanes.find((l) => l.id === laneId);
+        const msIds = new Set(laneObj?.milestones.map((m) => m.id) ?? []);
         page.swimLanes = page.swimLanes.filter((l) => l.id !== laneId);
         if (page.connections) {
           page.connections = page.connections.filter(
             (c) => c.fromLaneId !== laneId && c.toLaneId !== laneId
+          );
+        }
+        if (page.scheduleLines) {
+          page.scheduleLines = page.scheduleLines.filter(
+            (sl) => sl.sourceLaneId !== laneId && !msIds.has(sl.sourceItemId)
           );
         }
         draft.lastModified = new Date().toISOString();
@@ -348,6 +366,25 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
         if (swapIdx < 0 || swapIdx >= page.swimLanes.length) return;
         [page.swimLanes[idx], page.swimLanes[swapIdx]] = [page.swimLanes[swapIdx], page.swimLanes[idx]];
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  moveLane: (pageId, laneId, newIndex) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        const idx = page.swimLanes.findIndex((l) => l.id === laneId);
+        if (idx < 0) return;
+        const clampedIndex = Math.max(0, Math.min(page.swimLanes.length - 1, newIndex));
+        if (idx === clampedIndex) return;
+        const [lane] = page.swimLanes.splice(idx, 1);
+        page.swimLanes.splice(clampedIndex, 0, lane);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -591,6 +628,51 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page?.connections) return;
         page.connections = page.connections.filter((c) => c.id !== connectionId);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  addScheduleLine: (pageId, line) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        if (!page.scheduleLines) page.scheduleLines = [];
+        page.scheduleLines.push(line);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  updateScheduleLine: (pageId, lineId, updates) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.scheduleLines) return;
+        const line = page.scheduleLines.find((l) => l.id === lineId);
+        if (!line) return;
+        Object.assign(line, updates);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  deleteScheduleLine: (pageId, lineId) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.scheduleLines) return;
+        page.scheduleLines = page.scheduleLines.filter((l) => l.id !== lineId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

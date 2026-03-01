@@ -70,6 +70,13 @@ export function ConnectionLayer({
         >
           <polygon points="0 0, 8 3, 0 6" fill={tc.accent} />
         </marker>
+        <filter id="connection-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
       {resolvedConnections.map((rc) => {
         const { connection, fromX, fromY, toX, toY, lineType } = rc;
@@ -82,7 +89,7 @@ export function ConnectionLayer({
             ? lightenColor(baseColor, 60)
             : baseColor;
         const baseWidth = connection.strokeWidth ?? 1.5;
-        const strokeWidth = isSelected ? baseWidth + 1 : isHovered ? baseWidth + 0.5 : baseWidth;
+        const strokeWidth = isSelected ? baseWidth + 2 : isHovered ? baseWidth + 0.5 : baseWidth;
         const markerId = isSelected ? 'arrowhead-selected' : isHovered ? 'arrowhead-hovered' : 'arrowhead';
 
         let pathD: string;
@@ -134,7 +141,15 @@ export function ConnectionLayer({
               fill="none"
               markerEnd={`url(#${markerId})`}
               pointerEvents="none"
+              filter={isSelected ? 'url(#connection-glow)' : undefined}
             />
+            {/* Endpoint anchor circles when selected */}
+            {isSelected && (
+              <>
+                <circle cx={fromX} cy={fromY} r={4} fill={tc.selectionStroke} stroke="white" strokeWidth={1} pointerEvents="none" />
+                <circle cx={toX} cy={toY} r={4} fill={tc.selectionStroke} stroke="white" strokeWidth={1} pointerEvents="none" />
+              </>
+            )}
             {/* Memo bubble */}
             {showMemos && memoText && (
               <g pointerEvents="none">

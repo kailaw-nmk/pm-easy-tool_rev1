@@ -79,6 +79,16 @@ export interface Connection {
   strokeWidth?: number;
 }
 
+export interface ScheduleLine {
+  id: string;
+  sourceItemId: string;   // マイルストーンID
+  sourceLaneId: string;   // マイルストーンが属するレーンID
+  color: string;          // デフォルト '#3b82f6' (青)
+  strokeWidth: number;    // デフォルト 1.5
+  lineStyle: 'solid' | 'dashed' | 'dotted'; // デフォルト 'dashed'
+  label?: string;
+}
+
 export interface Annotation {
   id: string;
   type: 'note' | 'copyright';
@@ -102,6 +112,7 @@ export interface SchedulePage {
   swimLanes: SwimLane[];
   annotations: Annotation[];
   connections?: Connection[];
+  scheduleLines?: ScheduleLine[];
   filterTags?: string[];
 }
 

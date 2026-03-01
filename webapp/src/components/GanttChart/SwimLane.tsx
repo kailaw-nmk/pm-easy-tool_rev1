@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react';
 import type { SwimLane as SwimLaneType, PageTimeline, ZoomLevel } from '../../types/schedule';
 import { ScheduleBarComponent } from './ScheduleBar';
 import { MilestoneComponent } from './Milestone';
@@ -22,6 +23,7 @@ interface Props {
   onItemClick?: (e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => void;
   onLaneContextMenu?: (e: React.MouseEvent, laneId: string) => void;
   onLaneClick?: (e: React.MouseEvent, laneId: string) => void;
+  onLaneDragStart?: (laneId: string, startY: number, laneHeight: number) => void;
   isLaneSelected?: boolean;
   onTooltipShow?: (text: string, x: number, y: number) => void;
   onTooltipHide?: () => void;
@@ -31,23 +33,48 @@ export function SwimLaneComponent({
   lane, pageId, yOffset, timeline, headerWidth, totalWidth, zoomLevel, fontScale = 1.0,
   selectedIds, showMemos,
   onBarDoubleClick, onMilestoneDoubleClick, onContextMenu, onItemClick,
-  onLaneContextMenu, onLaneClick, isLaneSelected, onTooltipShow, onTooltipHide,
+  onLaneContextMenu, onLaneClick, onLaneDragStart, isLaneSelected, onTooltipShow, onTooltipHide,
 }: Props) {
   const baseFontSizeLaneTitle = useUIStore((s) => s.fontSizeLaneTitle);
   const fontSizeLaneTitle = baseFontSizeLaneTitle * fontScale;
   const tc = useThemeColors();
   const labelLines = lane.label.split('\n');
 
+  const laneDragRef = useRef<{ startY: number; hasMoved: boolean } | null>(null);
+  const DRAG_THRESHOLD = 3;
+
+  const handleLanePointerDown = useCallback((e: React.PointerEvent) => {
+    laneDragRef.current = { startY: e.clientY, hasMoved: false };
+    (e.target as SVGElement).setPointerCapture(e.pointerId);
+  }, []);
+
+  const handleLanePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!laneDragRef.current) return;
+    const dy = Math.abs(e.clientY - laneDragRef.current.startY);
+    if (!laneDragRef.current.hasMoved && dy >= DRAG_THRESHOLD) {
+      laneDragRef.current.hasMoved = true;
+      onLaneDragStart?.(lane.id, laneDragRef.current.startY, lane.heightPx);
+      laneDragRef.current = null;
+      (e.target as SVGElement).releasePointerCapture(e.pointerId);
+    }
+  }, [lane.id, lane.heightPx, onLaneDragStart]);
+
+  const handleLanePointerUp = useCallback((e: React.PointerEvent) => {
+    if (laneDragRef.current && !laneDragRef.current.hasMoved) {
+      onLaneClick?.(e as unknown as React.MouseEvent, lane.id);
+    }
+    laneDragRef.current = null;
+  }, [lane.id, onLaneClick]);
+
   return (
     <g className="swim-lane">
       {/* Lane label */}
       <rect x={0} y={yOffset} width={headerWidth} height={lane.heightPx}
         fill={isLaneSelected ? tc.accentLight : tc.laneLabelBg} stroke={tc.laneBorder} strokeWidth={1}
-        style={{ cursor: 'pointer' }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onLaneClick?.(e, lane.id);
-        }}
+        style={{ cursor: 'grab' }}
+        onPointerDown={(e) => { e.stopPropagation(); handleLanePointerDown(e); }}
+        onPointerMove={handleLanePointerMove}
+        onPointerUp={handleLanePointerUp}
         onContextMenu={(e) => {
           e.preventDefault();
           onLaneContextMenu?.(e, lane.id);
@@ -136,7 +163,7 @@ export function SwimLaneComponent({
       })()}
 
       {/* Lane background */}
-      <rect x={headerWidth} y={yOffset} width={totalWidth - headerWidth} height={lane.heightPx}
+      <rect className="lane-bg" x={headerWidth} y={yOffset} width={totalWidth - headerWidth} height={lane.heightPx}
         fill="transparent" stroke="none" />
 
       {/* Bottom border */}

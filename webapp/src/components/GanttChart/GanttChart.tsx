@@ -12,6 +12,8 @@ import { BarEditorDialog } from '../BarEditor';
 import { MilestoneEditorDialog } from '../MilestoneEditor';
 import { LaneTagEditor } from '../LaneTagEditor';
 import { ConnectionEditorDialog } from '../ConnectionEditor';
+import { ScheduleLineLayer } from './ScheduleLineLayer';
+import { ScheduleLineEditorDialog } from '../ScheduleLineEditor';
 import { monthsBetween, xToMonth } from '../../lib/date-utils';
 import { dayZoomTotalWidth, getHeaderHeight } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
@@ -22,7 +24,7 @@ import type { PositionContext } from '../../lib/position';
 interface ContextMenuState {
   x: number;
   y: number;
-  type: 'bar' | 'milestone' | 'lane' | 'connection';
+  type: 'bar' | 'milestone' | 'lane' | 'connection' | 'scheduleLine';
   id: string;
   laneId: string;
 }
@@ -34,7 +36,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -45,10 +47,26 @@ export function GanttChart() {
   const [editLaneTags, setEditLaneTags] = useState<string | null>(null);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [editConnection, setEditConnection] = useState<string | null>(null);
+  const [selectedScheduleLineId, setSelectedScheduleLineId] = useState<string | null>(null);
+  const [editScheduleLine, setEditScheduleLine] = useState<string | null>(null);
   const [connectHovered, setConnectHovered] = useState<{ itemId: string; laneId: string } | null>(null);
   const [connectMousePos, setConnectMousePos] = useState<{ x: number; y: number } | null>(null);
   const [nearestSnap, setNearestSnap] = useState<SnapPoint | null>(null);
   const bodySvgRef = useRef<SVGSVGElement>(null);
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    isPanning: boolean;
+  } | null>(null);
+  const [laneDrag, setLaneDrag] = useState<{
+    laneId: string;
+    startY: number;
+    currentY: number;
+    laneHeight: number;
+    originalIndex: number;
+  } | null>(null);
 
   const page = data?.pages.find((p) => p.id === currentPageId);
   const rawTimeline = page?.timeline ?? data?.timeline;
@@ -118,7 +136,19 @@ export function GanttChart() {
     return isFitVertical ? lanesTotal : lanesTotal + 20;
   }, [effectiveLanes, isFitVertical]);
 
-  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  const selectedIds = useMemo(() => {
+    const ids = new Set(selected.map((s) => s.id));
+    for (const s of selected) {
+      if (s.type === 'lane' && page) {
+        const lane = page.swimLanes.find((l) => l.id === s.laneId);
+        if (lane) {
+          lane.bars.forEach((b) => ids.add(b.id));
+          lane.milestones.forEach((m) => ids.add(m.id));
+        }
+      }
+    }
+    return ids;
+  }, [selected, page]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => {
     e.preventDefault();
@@ -145,9 +175,12 @@ export function GanttChart() {
     } else if (contextMenu.type === 'connection') {
       deleteConnection(currentPageId, contextMenu.id);
       setSelectedConnectionId(null);
+    } else if (contextMenu.type === 'scheduleLine') {
+      deleteScheduleLine(currentPageId, contextMenu.id);
+      setSelectedScheduleLineId(null);
     }
     setContextMenu(null);
-  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection]);
+  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine]);
 
   const handleConnectionClick = useCallback((e: React.MouseEvent, connectionId: string) => {
     e.stopPropagation();
@@ -203,6 +236,13 @@ export function GanttChart() {
   }, [contextMenu, currentPageId, page, updateLaneHeight]);
 
   const handleSvgClick = useCallback((e: React.MouseEvent) => {
+    // Skip click processing after a pan drag
+    if (panRef.current?.isPanning) {
+      panRef.current = null;
+      return;
+    }
+    panRef.current = null;
+
     closeContextMenu();
 
     // Connect mode: handle snap point clicks
@@ -290,9 +330,11 @@ export function GanttChart() {
       return;
     }
 
-    if ((e.target as SVGElement).tagName === 'svg' || (e.target as SVGElement).classList.contains('gantt-bg')) {
+    const clickTarget = e.target as SVGElement;
+    if (clickTarget.tagName === 'svg' || clickTarget.classList.contains('gantt-bg') || clickTarget.classList.contains('lane-bg')) {
       clearSelection();
       setSelectedConnectionId(null);
+      setSelectedScheduleLineId(null);
     }
   }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection, effectiveLanes]);
 
@@ -313,6 +355,12 @@ export function GanttChart() {
       if (e.key === 'Delete') {
         const tag = (e.target as HTMLElement).tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        if (selectedScheduleLineId) {
+          deleteScheduleLine(currentPageId, selectedScheduleLineId);
+          setSelectedScheduleLineId(null);
+          return;
+        }
 
         if (selectedConnectionId) {
           deleteConnection(currentPageId, selectedConnectionId);
@@ -336,7 +384,7 @@ export function GanttChart() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, selectedConnectionId, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, clearSelection]);
+  }, [selected, selectedConnectionId, selectedScheduleLineId, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine, clearSelection]);
 
   const handleTooltipShow = useCallback((text: string, x: number, y: number) => {
     if (showTooltips) {
@@ -409,6 +457,103 @@ export function GanttChart() {
     setNearestSnap(foundSnap);
   }, [placementMode, page, timeline, headerWidth, zoomLevel, laneOffsets]);
 
+  // Pan handler: start panning on empty area pointerdown
+  const handleSvgPointerDown = useCallback((e: React.PointerEvent) => {
+    if (placementMode !== 'none' || laneDrag) return;
+    const target = e.target as SVGElement;
+    if (target.tagName !== 'svg' && !target.classList.contains('gantt-bg') && !target.classList.contains('lane-bg')) return;
+
+    const container = bodySvgRef.current?.closest('.gantt-container') as HTMLElement;
+    if (!container) return;
+
+    panRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+      isPanning: false,
+    };
+  }, [placementMode, laneDrag]);
+
+  // Lane drag handlers
+  const handleLaneDragStart = useCallback((laneId: string, startY: number, laneHeight: number) => {
+    const idx = effectiveLanes.findIndex((l) => l.id === laneId);
+    if (idx < 0 || effectiveLanes.length <= 1) return;
+    select({ type: 'lane', id: laneId, laneId });
+    setLaneDrag({ laneId, startY, currentY: startY, laneHeight, originalIndex: idx });
+  }, [effectiveLanes, select]);
+
+  const handlePointerMoveUnified = useCallback((e: React.PointerEvent) => {
+    // Lane drag processing (existing)
+    if (laneDrag) {
+      setLaneDrag((prev) => prev ? { ...prev, currentY: e.clientY } : null);
+      return;
+    }
+
+    // Pan processing
+    if (panRef.current) {
+      const dx = e.clientX - panRef.current.startX;
+      const dy = e.clientY - panRef.current.startY;
+      if (!panRef.current.isPanning && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        panRef.current.isPanning = true;
+        const svg = bodySvgRef.current;
+        if (svg) svg.style.cursor = 'grabbing';
+      }
+      if (panRef.current.isPanning) {
+        const container = bodySvgRef.current?.closest('.gantt-container') as HTMLElement;
+        if (container) {
+          container.scrollLeft = panRef.current.scrollLeft - dx;
+          container.scrollTop = panRef.current.scrollTop - dy;
+        }
+      }
+    }
+  }, [laneDrag]);
+
+  const handlePointerUpUnified = useCallback(() => {
+    // Lane drag end (existing)
+    if (laneDrag) {
+      const dy = laneDrag.currentY - laneDrag.startY;
+      let targetIndex = laneDrag.originalIndex;
+      let accHeight = 0;
+      if (dy > 0) {
+        for (let i = laneDrag.originalIndex + 1; i < effectiveLanes.length; i++) {
+          accHeight += effectiveLanes[i].heightPx;
+          if (dy > accHeight - effectiveLanes[i].heightPx / 2) {
+            targetIndex = i;
+          } else {
+            break;
+          }
+        }
+      } else if (dy < 0) {
+        for (let i = laneDrag.originalIndex - 1; i >= 0; i--) {
+          accHeight += effectiveLanes[i].heightPx;
+          if (-dy > accHeight - effectiveLanes[i].heightPx / 2) {
+            targetIndex = i;
+          } else {
+            break;
+          }
+        }
+      }
+      if (targetIndex !== laneDrag.originalIndex) {
+        moveLane(currentPageId, laneDrag.laneId, targetIndex);
+      }
+      setLaneDrag(null);
+      return;
+    }
+
+    // Pan end
+    if (panRef.current) {
+      const svg = bodySvgRef.current;
+      if (svg) svg.style.cursor = '';
+      // Note: panRef is cleared in handleSvgClick if panning occurred,
+      // or here if no click event fires
+      if (!panRef.current.isPanning) {
+        panRef.current = null;
+      }
+      // If panning, leave panRef for handleSvgClick to detect and clear
+    }
+  }, [laneDrag, effectiveLanes, currentPageId, moveLane]);
+
   // ESC key cancels connect mode
   useEffect(() => {
     if (placementMode !== 'connect') return;
@@ -445,9 +590,12 @@ export function GanttChart() {
           className="gantt-chart"
           width={totalWidth}
           height={bodyHeight}
-          style={{ minWidth: totalWidth, cursor: placementMode !== 'none' ? 'crosshair' : undefined }}
+          style={{ minWidth: totalWidth, cursor: laneDrag ? 'grabbing' : placementMode !== 'none' ? 'crosshair' : undefined }}
           onClick={handleSvgClick}
           onMouseMove={handleConnectMouseMove}
+          onPointerDown={handleSvgPointerDown}
+          onPointerMove={handlePointerMoveUnified}
+          onPointerUp={handlePointerUpUnified}
         >
           {/* Background */}
           <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
@@ -460,6 +608,26 @@ export function GanttChart() {
             onConnectionClick={handleConnectionClick}
             onConnectionDoubleClick={handleConnectionDoubleClick}
             onConnectionContextMenu={handleConnectionContextMenu}
+          />
+
+          {/* Schedule lines (vertical lines from milestones) */}
+          <ScheduleLineLayer
+            page={page}
+            timeline={timeline}
+            headerWidth={headerWidth}
+            zoomLevel={zoomLevel}
+            bodyHeight={bodyHeight}
+            selectedScheduleLineId={selectedScheduleLineId}
+            onScheduleLineClick={(e, lineId) => {
+              e.stopPropagation();
+              clearSelection();
+              setSelectedConnectionId(null);
+              setSelectedScheduleLineId(lineId);
+            }}
+            onScheduleLineContextMenu={(e, lineId) => {
+              setSelectedScheduleLineId(lineId);
+              setContextMenu({ x: e.clientX, y: e.clientY, type: 'scheduleLine', id: lineId, laneId: '' });
+            }}
           />
 
           {/* Swim lanes (y starts from 0) */}
@@ -484,6 +652,7 @@ export function GanttChart() {
                 onItemClick={handleItemClick}
                 onLaneContextMenu={handleLaneContextMenu}
                 onLaneClick={handleLaneClick}
+                onLaneDragStart={handleLaneDragStart}
                 isLaneSelected={selectedIds.has(lane.id)}
                 onTooltipShow={handleTooltipShow}
                 onTooltipHide={handleTooltipHide}
@@ -503,6 +672,55 @@ export function GanttChart() {
               nearestSnap={nearestSnap}
             />
           )}
+
+          {/* Lane drag ghost and insertion indicator */}
+          {laneDrag && (() => {
+            const dy = laneDrag.currentY - laneDrag.startY;
+            const origOffset = laneOffsets.find((lo) => lo.laneId === laneDrag.laneId);
+            if (!origOffset) return null;
+            // Calculate insertion indicator Y
+            let targetIndex = laneDrag.originalIndex;
+            let accHeight = 0;
+            if (dy > 0) {
+              for (let i = laneDrag.originalIndex + 1; i < effectiveLanes.length; i++) {
+                accHeight += effectiveLanes[i].heightPx;
+                if (dy > accHeight - effectiveLanes[i].heightPx / 2) targetIndex = i;
+                else break;
+              }
+            } else if (dy < 0) {
+              for (let i = laneDrag.originalIndex - 1; i >= 0; i--) {
+                accHeight += effectiveLanes[i].heightPx;
+                if (-dy > accHeight - effectiveLanes[i].heightPx / 2) targetIndex = i;
+                else break;
+              }
+            }
+            let indicatorY = 0;
+            for (let i = 0; i <= targetIndex; i++) {
+              if (i === targetIndex && targetIndex <= laneDrag.originalIndex) break;
+              indicatorY += effectiveLanes[i].heightPx;
+            }
+            return (
+              <>
+                {/* Ghost lane */}
+                <rect
+                  x={0} y={origOffset.y + dy}
+                  width={totalWidth} height={laneDrag.laneHeight}
+                  fill={tc.accentLight} opacity={0.4}
+                  stroke={tc.selectionStroke} strokeWidth={2}
+                  pointerEvents="none"
+                />
+                {/* Insertion indicator */}
+                {targetIndex !== laneDrag.originalIndex && (
+                  <line
+                    x1={0} y1={indicatorY} x2={totalWidth} y2={indicatorY}
+                    stroke={tc.accent} strokeWidth={3}
+                    strokeDasharray="8 4"
+                    pointerEvents="none"
+                  />
+                )}
+              </>
+            );
+          })()}
 
           {/* Today line (body only — vertical line) */}
           <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={bodyHeight} zoomLevel={zoomLevel} region="body" />
@@ -543,10 +761,52 @@ export function GanttChart() {
                 {selected.filter((s) => s.type === 'bar' || s.type === 'milestone').length === 2 && (
                   <button onClick={handleCreateConnection}>接続を作成</button>
                 )}
+                {contextMenu.type === 'milestone' && (() => {
+                  const existingLine = page?.scheduleLines?.find(
+                    (sl) => sl.sourceItemId === contextMenu.id && sl.sourceLaneId === contextMenu.laneId
+                  );
+                  return existingLine ? (
+                    <button onClick={() => {
+                      deleteScheduleLine(currentPageId, existingLine.id);
+                      setContextMenu(null);
+                    }}>スケジュールラインを削除</button>
+                  ) : (
+                    <button onClick={() => {
+                      addScheduleLine(currentPageId, {
+                        id: `sl_${Date.now()}`,
+                        sourceItemId: contextMenu.id,
+                        sourceLaneId: contextMenu.laneId,
+                        color: '#3b82f6',
+                        strokeWidth: 1.5,
+                        lineStyle: 'dashed',
+                      });
+                      setContextMenu(null);
+                    }}>スケジュールラインを描画</button>
+                  );
+                })()}
               </>
             )}
             {contextMenu.type === 'connection' && (
-              <button onClick={() => { setEditConnection(contextMenu.id); setContextMenu(null); }}>編集...</button>
+              <>
+                <button onClick={() => { setEditConnection(contextMenu.id); setContextMenu(null); }}>編集...</button>
+                <button onClick={() => {
+                  const conn = page?.connections?.find((c) => c.id === contextMenu.id);
+                  const memo = prompt('メモを入力:', conn?.memo ?? '');
+                  if (memo !== null) updateConnection(currentPageId, contextMenu.id, { memo: memo || undefined });
+                  setContextMenu(null);
+                }}>メモ編集</button>
+                <button onClick={() => {
+                  const conn = page?.connections?.find((c) => c.id === contextMenu.id);
+                  const color = prompt('色を入力 (例: #ff0000):', conn?.color ?? '#888888');
+                  if (color !== null) updateConnection(currentPageId, contextMenu.id, { color: color || undefined });
+                  setContextMenu(null);
+                }}>色変更</button>
+              </>
+            )}
+            {contextMenu.type === 'scheduleLine' && (
+              <>
+                <button onClick={() => { setEditScheduleLine(contextMenu.id); setContextMenu(null); }}>編集...</button>
+              </>
             )}
             {contextMenu.type === 'lane' && (
               <>
@@ -590,6 +850,13 @@ export function GanttChart() {
           pageId={currentPageId}
           connectionId={editConnection}
           onClose={() => setEditConnection(null)}
+        />
+      )}
+      {editScheduleLine && (
+        <ScheduleLineEditorDialog
+          pageId={currentPageId}
+          lineId={editScheduleLine}
+          onClose={() => setEditScheduleLine(null)}
         />
       )}
     </div>

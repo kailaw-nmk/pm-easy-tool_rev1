@@ -23,7 +23,20 @@ export function migrateData(data: ScheduleData): ScheduleData {
     migrated = migrateV3toV31(migrated);
   }
 
+  // v3.1.0 → v3.2.0
+  if (migrated.version === '3.1.0') {
+    migrated = migrateV31toV32(migrated);
+  }
+
   return migrated;
+}
+
+function migrateV31toV32(data: ScheduleData): ScheduleData {
+  const pages = data.pages.map((page) => ({
+    ...page,
+    scheduleLines: page.scheduleLines ?? [],
+  }));
+  return { ...data, version: '3.2.0', pages };
 }
 
 function migrateV3toV31(data: ScheduleData): ScheduleData {
