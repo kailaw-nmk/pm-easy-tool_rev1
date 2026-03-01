@@ -84,10 +84,10 @@ function resolveItemPosition(
   // Check milestones
   const ms = lane.milestones.find((m) => m.id === itemId);
   if (ms) {
-    const x = itemX(ms.date, posCtx);
-    const w = posCtx.timeline.monthWidthPx;
+    const x = itemX(ms.date, posCtx) + (ms.xOffsetPx ?? 0);
+    const w = ms.widthPx ?? 60;
     const y = laneY + ms.yOffsetInLane;
-    const h = 16; // approximate milestone height
+    const h = ms.heightPx ?? 24;
 
     if (anchor) {
       const rect: ItemRect = { x, y, w, h };
@@ -96,7 +96,7 @@ function resolveItemPosition(
 
     // Default: center
     const cx = x + w / 2;
-    const cy = y + 8;
+    const cy = y + h / 2;
     return { x: cx, y: cy };
   }
 
@@ -122,8 +122,8 @@ export function getItemRect(
 
   const ms = lane.milestones.find((m) => m.id === itemId);
   if (ms) {
-    const x = itemX(ms.date, posCtx);
-    return { x, y: laneY + ms.yOffsetInLane, w: posCtx.timeline.monthWidthPx, h: 16 };
+    const x = itemX(ms.date, posCtx) + (ms.xOffsetPx ?? 0);
+    return { x, y: laneY + ms.yOffsetInLane, w: ms.widthPx ?? 60, h: ms.heightPx ?? 24 };
   }
 
   return null;

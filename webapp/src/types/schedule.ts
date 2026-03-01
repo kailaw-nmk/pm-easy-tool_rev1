@@ -37,9 +37,12 @@ export interface Milestone {
   label: string;
   date: string; // "2026-07"
   yOffsetInLane: number;
-  xOffsetPx?: number; // pixel offset from date-snapped X position (free placement)
-  widthPx?: number;   // user-defined text area width
-  heightPx?: number;  // user-defined text area height
+  xOffsetPx?: number;    // pixel offset from date-snapped X position (free placement)
+  widthPx?: number;      // user-defined text area width
+  heightPx?: number;     // user-defined text area height
+  starXOffset?: number;  // star icon X offset from dateX (independent of text)
+  starYOffset?: number;  // star icon Y offset from laneY (independent of text)
+  starSize?: number;     // star icon font size
   tooltip?: string;
   memo?: string;
 }

@@ -26,10 +26,11 @@ interface Props {
 
 const DRAG_THRESHOLD = 3;
 const RESIZE_HANDLE_SIZE = 6;
-const DEFAULT_WIDTH = 60;
-const DEFAULT_HEIGHT = 30;
-const MIN_WIDTH = 20;
-const MIN_HEIGHT = 16;
+const DEFAULT_TEXT_WIDTH = 60;
+const DEFAULT_TEXT_HEIGHT = 24;
+const MIN_TEXT_WIDTH = 20;
+const MIN_TEXT_HEIGHT = 16;
+const MIN_STAR_SIZE = 10;
 
 export function MilestoneComponent({
   milestone, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, fontScale = 1.0, laneHeight,
@@ -40,134 +41,198 @@ export function MilestoneComponent({
   const baseFontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
   const fontSizeMilestone = baseFontSizeMilestone * fontScale;
   const tc = useThemeColors();
-
   const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
 
-  // Move drag state
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    origYOffset: number;
-    hasMoved: boolean;
-  } | null>(null);
+  // --- Drag/resize refs ---
+  const textDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean } | null>(null);
+  const textResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const starDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean } | null>(null);
+  const starResizeRef = useRef<{ startX: number; startY: number; origSize: number } | null>(null);
 
-  // Resize drag state
-  const resizeRef = useRef<{
-    startX: number;
-    startY: number;
-    origW: number;
-    origH: number;
-  } | null>(null);
+  // --- Visual offsets during drag/resize ---
+  const [textDragOffset, setTextDragOffset] = useState({ dx: 0, dy: 0 });
+  const [textResizeDelta, setTextResizeDelta] = useState({ dw: 0, dh: 0 });
+  const [starDragOffset, setStarDragOffset] = useState({ dx: 0, dy: 0 });
+  const [starResizeDelta, setStarResizeDelta] = useState({ ds: 0 });
 
-  const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0 });
-  const [resizeDelta, setResizeDelta] = useState({ dw: 0, dh: 0 });
-
-  const dateX = itemX(milestone.date, posCtx);
-  const baseX = dateX + (milestone.xOffsetPx ?? 0);
-  const baseY = laneY + milestone.yOffsetInLane;
-
-  const boxW = (milestone.widthPx ?? DEFAULT_WIDTH) + resizeDelta.dw;
-  const boxH = (milestone.heightPx ?? DEFAULT_HEIGHT) + resizeDelta.dh;
-
-  const renderX = baseX + dragOffset.dx;
-  const renderY = baseY + dragOffset.dy;
-
-  // Separate ★ marker from label text
+  // --- Parse label: separate ★ from text ---
   const starMatch = milestone.label.match(/^(★\s*)([\s\S]*)$/);
   const hasStar = !!starMatch;
-  const starChar = hasStar ? '★' : '';
   const labelText = hasStar ? starMatch![2].trim() : milestone.label;
   const labelLines = labelText ? labelText.split('\n') : [];
+  const hasText = labelLines.length > 0;
 
-  const starSize = fontSizeMilestone * 1.6;
+  // --- Computed positions ---
+  const dateX = itemX(milestone.date, posCtx);
   const labelLineHeight = fontSizeMilestone + 3;
 
-  // --- Move handlers ---
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  // Text area
+  const textW = Math.max(MIN_TEXT_WIDTH, (milestone.widthPx ?? DEFAULT_TEXT_WIDTH) + textResizeDelta.dw);
+  const textH = Math.max(MIN_TEXT_HEIGHT, (milestone.heightPx ?? DEFAULT_TEXT_HEIGHT) + textResizeDelta.dh);
+  const textX = dateX + (milestone.xOffsetPx ?? 0) + textDragOffset.dx;
+  const textY = laneY + milestone.yOffsetInLane + textDragOffset.dy;
+
+  // Star
+  const starSizeBase = milestone.starSize ?? fontSizeMilestone * 1.6;
+  const starSizeCurrent = Math.max(MIN_STAR_SIZE, starSizeBase + starResizeDelta.ds);
+
+  // Default star position: centered below text area
+  const defaultStarXOff = (milestone.xOffsetPx ?? 0) + (milestone.widthPx ?? DEFAULT_TEXT_WIDTH) / 2;
+  const defaultStarYOff = milestone.yOffsetInLane + (milestone.heightPx ?? DEFAULT_TEXT_HEIGHT) + starSizeBase * 0.6 + 2;
+
+  const starCX = dateX + (milestone.starXOffset ?? defaultStarXOff) + starDragOffset.dx;
+  const starCY = laneY + (milestone.starYOffset ?? defaultStarYOff) + starDragOffset.dy;
+  const starHitSize = Math.max(starSizeCurrent * 1.1, 20);
+
+  // --- Text drag handlers ---
+  const handleTextDragDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origYOffset: milestone.yOffsetInLane,
+    textDragRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      origXOff: milestone.xOffsetPx ?? 0,
+      origYOff: milestone.yOffsetInLane,
       hasMoved: false,
     };
-  }, [milestone.yOffsetInLane]);
+  }, [milestone.xOffsetPx, milestone.yOffsetInLane]);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (dragRef.current) {
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
-      if (!dragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
-        dragRef.current.hasMoved = true;
-      }
-      if (dragRef.current.hasMoved) setDragOffset({ dx, dy });
-    }
-    if (resizeRef.current) {
-      const dw = e.clientX - resizeRef.current.startX;
-      const dh = e.clientY - resizeRef.current.startY;
-      setResizeDelta({
-        dw: Math.max(MIN_WIDTH - resizeRef.current.origW, dw),
-        dh: Math.max(MIN_HEIGHT - resizeRef.current.origH, dh),
-      });
-    }
-  }, []);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    // Handle resize end
-    if (resizeRef.current) {
-      const dw = e.clientX - resizeRef.current.startX;
-      const dh = e.clientY - resizeRef.current.startY;
-      const newW = Math.max(MIN_WIDTH, resizeRef.current.origW + dw);
-      const newH = Math.max(MIN_HEIGHT, resizeRef.current.origH + dh);
-      updateMilestone(pageId, laneId, milestone.id, {
-        widthPx: Math.round(newW),
-        heightPx: Math.round(newH),
-      });
-      setResizeDelta({ dw: 0, dh: 0 });
-      resizeRef.current = null;
-      return;
-    }
-
-    // Handle move end
-    const drag = dragRef.current;
-    if (!drag) return;
-
-    if (!drag.hasMoved) {
-      onClick?.(e as unknown as React.MouseEvent);
-      dragRef.current = null;
-      return;
-    }
-
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    const newAbsX = baseX + dx;
-    const newXOffset = newAbsX - dateX;
-    const newYOffset = Math.max(0, Math.round(drag.origYOffset + dy));
-
-    updateMilestone(pageId, laneId, milestone.id, {
-      xOffsetPx: newXOffset,
-      yOffsetInLane: newYOffset,
-    });
-
-    setDragOffset({ dx: 0, dy: 0 });
-    dragRef.current = null;
-  }, [baseX, dateX, laneId, milestone.id, onClick, pageId, updateMilestone]);
-
-  // --- Resize handle ---
-  const handleResizeDown = useCallback((e: React.PointerEvent) => {
+  // --- Text resize handlers ---
+  const handleTextResizeDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: milestone.widthPx ?? DEFAULT_WIDTH,
-      origH: milestone.heightPx ?? DEFAULT_HEIGHT,
+    textResizeRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      origW: milestone.widthPx ?? DEFAULT_TEXT_WIDTH,
+      origH: milestone.heightPx ?? DEFAULT_TEXT_HEIGHT,
     };
   }, [milestone.widthPx, milestone.heightPx]);
 
+  // --- Star drag handlers ---
+  const handleStarDragDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as SVGElement).setPointerCapture(e.pointerId);
+    starDragRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      origXOff: milestone.starXOffset ?? defaultStarXOff,
+      origYOff: milestone.starYOffset ?? defaultStarYOff,
+      hasMoved: false,
+    };
+  }, [milestone.starXOffset, milestone.starYOffset, defaultStarXOff, defaultStarYOff]);
+
+  // --- Star resize handlers ---
+  const handleStarResizeDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as SVGElement).setPointerCapture(e.pointerId);
+    starResizeRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      origSize: starSizeBase,
+    };
+  }, [starSizeBase]);
+
+  // --- Common pointer move ---
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (textDragRef.current) {
+      const dx = e.clientX - textDragRef.current.startX;
+      const dy = e.clientY - textDragRef.current.startY;
+      if (!textDragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
+        textDragRef.current.hasMoved = true;
+      }
+      if (textDragRef.current.hasMoved) setTextDragOffset({ dx, dy });
+    }
+    if (textResizeRef.current) {
+      const dw = e.clientX - textResizeRef.current.startX;
+      const dh = e.clientY - textResizeRef.current.startY;
+      setTextResizeDelta({
+        dw: Math.max(MIN_TEXT_WIDTH - textResizeRef.current.origW, dw),
+        dh: Math.max(MIN_TEXT_HEIGHT - textResizeRef.current.origH, dh),
+      });
+    }
+    if (starDragRef.current) {
+      const dx = e.clientX - starDragRef.current.startX;
+      const dy = e.clientY - starDragRef.current.startY;
+      if (!starDragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
+        starDragRef.current.hasMoved = true;
+      }
+      if (starDragRef.current.hasMoved) setStarDragOffset({ dx, dy });
+    }
+    if (starResizeRef.current) {
+      const dx = e.clientX - starResizeRef.current.startX;
+      const dy = e.clientY - starResizeRef.current.startY;
+      const ds = (dx + dy) / 2;
+      setStarResizeDelta({ ds: Math.max(MIN_STAR_SIZE - starResizeRef.current.origSize, ds) });
+    }
+  }, []);
+
+  // --- Common pointer up ---
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // Text resize end
+    if (textResizeRef.current) {
+      const dw = e.clientX - textResizeRef.current.startX;
+      const dh = e.clientY - textResizeRef.current.startY;
+      updateMilestone(pageId, laneId, milestone.id, {
+        widthPx: Math.round(Math.max(MIN_TEXT_WIDTH, textResizeRef.current.origW + dw)),
+        heightPx: Math.round(Math.max(MIN_TEXT_HEIGHT, textResizeRef.current.origH + dh)),
+      });
+      setTextResizeDelta({ dw: 0, dh: 0 });
+      textResizeRef.current = null;
+      return;
+    }
+
+    // Text drag end
+    if (textDragRef.current) {
+      if (!textDragRef.current.hasMoved) {
+        onClick?.(e as unknown as React.MouseEvent);
+        textDragRef.current = null;
+        return;
+      }
+      const dx = e.clientX - textDragRef.current.startX;
+      const dy = e.clientY - textDragRef.current.startY;
+      updateMilestone(pageId, laneId, milestone.id, {
+        xOffsetPx: textDragRef.current.origXOff + dx,
+        yOffsetInLane: Math.max(0, Math.round(textDragRef.current.origYOff + dy)),
+      });
+      setTextDragOffset({ dx: 0, dy: 0 });
+      textDragRef.current = null;
+      return;
+    }
+
+    // Star resize end
+    if (starResizeRef.current) {
+      const dx = e.clientX - starResizeRef.current.startX;
+      const dy = e.clientY - starResizeRef.current.startY;
+      const ds = (dx + dy) / 2;
+      updateMilestone(pageId, laneId, milestone.id, {
+        starSize: Math.round(Math.max(MIN_STAR_SIZE, starResizeRef.current.origSize + ds)),
+      });
+      setStarResizeDelta({ ds: 0 });
+      starResizeRef.current = null;
+      return;
+    }
+
+    // Star drag end
+    if (starDragRef.current) {
+      if (!starDragRef.current.hasMoved) {
+        onClick?.(e as unknown as React.MouseEvent);
+        starDragRef.current = null;
+        return;
+      }
+      const dx = e.clientX - starDragRef.current.startX;
+      const dy = e.clientY - starDragRef.current.startY;
+      updateMilestone(pageId, laneId, milestone.id, {
+        starXOffset: starDragRef.current.origXOff + dx,
+        starYOffset: starDragRef.current.origYOff + dy,
+      });
+      setStarDragOffset({ dx: 0, dy: 0 });
+      starDragRef.current = null;
+      return;
+    }
+  }, [pageId, laneId, milestone.id, onClick, updateMilestone]);
+
+  // --- Tooltip ---
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     if (milestone.tooltip && onTooltipShow) {
       onTooltipShow(milestone.tooltip, e.clientX, e.clientY);
@@ -178,12 +243,6 @@ export function MilestoneComponent({
     onTooltipHide?.();
   }, [onTooltipHide]);
 
-  // Text area: label lines on top, star below
-  const labelAreaTop = 4;
-  const starY = labelLines.length > 0
-    ? labelAreaTop + labelLines.length * labelLineHeight + starSize / 2
-    : labelAreaTop + starSize / 2;
-
   return (
     <g className="milestone"
       onContextMenu={onContextMenu}
@@ -193,96 +252,129 @@ export function MilestoneComponent({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Selection highlight */}
-      {isSelected && (
-        <rect
-          x={renderX - 1}
-          y={renderY - 1}
-          width={boxW + 2}
-          height={boxH + 2}
-          fill="none"
-          stroke={tc.selectionStroke}
-          strokeWidth={2}
-          strokeDasharray="4 2"
-          rx={2}
-          ry={2}
-          pointerEvents="none"
-        />
+      {/* ===== Text area ===== */}
+      {hasText && (
+        <>
+          {/* Text selection highlight */}
+          {isSelected && (
+            <rect
+              x={textX - 1} y={textY - 1}
+              width={textW + 2} height={textH + 2}
+              fill="none" stroke={tc.selectionStroke}
+              strokeWidth={2} strokeDasharray="4 2"
+              rx={2} ry={2} pointerEvents="none"
+            />
+          )}
+
+          {/* Draggable text body */}
+          <rect
+            x={textX} y={textY}
+            width={textW} height={textH}
+            fill="transparent"
+            style={{ cursor: 'move' }}
+            onPointerDown={handleTextDragDown}
+          />
+
+          {/* Label text with clipPath */}
+          <g pointerEvents="none" clipPath={`url(#ms-text-clip-${milestone.id})`}>
+            <defs>
+              <clipPath id={`ms-text-clip-${milestone.id}`}>
+                <rect x={textX} y={textY} width={textW} height={textH} />
+              </clipPath>
+            </defs>
+            {labelLines.map((line, i) => (
+              <text
+                key={`label-${i}`}
+                x={textX + textW / 2}
+                y={textY + 4 + i * labelLineHeight + fontSizeMilestone / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSizeMilestone}
+                fontWeight="bold"
+                fill={tc.milestoneText}
+                style={{ userSelect: 'none' }}
+              >
+                {line}
+              </text>
+            ))}
+          </g>
+
+          {/* Text resize handle (bottom-right) */}
+          <rect
+            x={textX + textW - RESIZE_HANDLE_SIZE}
+            y={textY + textH - RESIZE_HANDLE_SIZE}
+            width={RESIZE_HANDLE_SIZE}
+            height={RESIZE_HANDLE_SIZE}
+            fill={isSelected ? tc.selectionStroke : tc.textMuted}
+            opacity={isSelected ? 0.7 : 0.3}
+            rx={1}
+            style={{ cursor: 'nwse-resize' }}
+            onPointerDown={handleTextResizeDown}
+          />
+        </>
       )}
 
-      {/* Draggable body area */}
-      <rect
-        x={renderX}
-        y={renderY}
-        width={boxW}
-        height={boxH}
-        fill="transparent"
-        style={{ cursor: 'move' }}
-        onPointerDown={handlePointerDown}
-      />
+      {/* ===== Star icon ===== */}
+      {hasStar && (
+        <>
+          {/* Star selection highlight */}
+          {isSelected && (
+            <rect
+              x={starCX - starHitSize / 2 - 1}
+              y={starCY - starHitSize / 2 - 1}
+              width={starHitSize + 2} height={starHitSize + 2}
+              fill="none" stroke={tc.selectionStroke}
+              strokeWidth={2} strokeDasharray="4 2"
+              rx={2} ry={2} pointerEvents="none"
+            />
+          )}
 
-      {/* Label text (no auto-wrap — rendered as entered) */}
-      <g pointerEvents="none" clipPath={`url(#ms-clip-${milestone.id})`}>
-        <defs>
-          <clipPath id={`ms-clip-${milestone.id}`}>
-            <rect x={renderX} y={renderY} width={boxW} height={boxH} />
-          </clipPath>
-        </defs>
-        {labelLines.map((line, i) => (
+          {/* Draggable star body */}
+          <rect
+            x={starCX - starHitSize / 2}
+            y={starCY - starHitSize / 2}
+            width={starHitSize} height={starHitSize}
+            fill="transparent"
+            style={{ cursor: 'move' }}
+            onPointerDown={handleStarDragDown}
+          />
+
+          {/* Star character */}
           <text
-            key={`label-${i}`}
-            x={renderX + boxW / 2}
-            y={renderY + labelAreaTop + i * labelLineHeight + fontSizeMilestone / 2}
+            x={starCX} y={starCY}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={fontSizeMilestone}
-            fontWeight="bold"
+            fontSize={starSizeCurrent}
             fill={tc.milestoneText}
+            pointerEvents="none"
             style={{ userSelect: 'none' }}
-          >
-            {line}
-          </text>
-        ))}
-        {hasStar && (
-          <text
-            x={renderX + boxW / 2}
-            y={renderY + starY}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={starSize}
-            fill={tc.milestoneText}
-            style={{ userSelect: 'none' }}
-          >
-            {starChar}
-          </text>
-        )}
-      </g>
+          >★</text>
 
-      {/* Resize handle (bottom-right corner) */}
-      <rect
-        x={renderX + boxW - RESIZE_HANDLE_SIZE}
-        y={renderY + boxH - RESIZE_HANDLE_SIZE}
-        width={RESIZE_HANDLE_SIZE}
-        height={RESIZE_HANDLE_SIZE}
-        fill={isSelected ? tc.selectionStroke : tc.textMuted}
-        opacity={isSelected ? 0.7 : 0.3}
-        rx={1}
-        style={{ cursor: 'nwse-resize' }}
-        onPointerDown={handleResizeDown}
-      />
+          {/* Star resize handle (bottom-right of hit area) */}
+          <rect
+            x={starCX + starHitSize / 2 - RESIZE_HANDLE_SIZE}
+            y={starCY + starHitSize / 2 - RESIZE_HANDLE_SIZE}
+            width={RESIZE_HANDLE_SIZE}
+            height={RESIZE_HANDLE_SIZE}
+            fill={isSelected ? tc.selectionStroke : tc.textMuted}
+            opacity={isSelected ? 0.7 : 0.3}
+            rx={1}
+            style={{ cursor: 'nwse-resize' }}
+            onPointerDown={handleStarResizeDown}
+          />
+        </>
+      )}
 
       {/* Memo icon */}
       {showMemos && milestone.memo && (
         <text
-          x={renderX + boxW - 10}
-          y={renderY + 8}
+          x={hasText ? textX + textW - 10 : starCX + starHitSize / 2 - 10}
+          y={hasText ? textY + 8 : starCY - starHitSize / 2 + 8}
           fontSize={8}
           fill={tc.memoIcon}
           pointerEvents="none"
           style={{ userSelect: 'none' }}
-        >
-          📝
-        </text>
+        >📝</text>
       )}
     </g>
   );
