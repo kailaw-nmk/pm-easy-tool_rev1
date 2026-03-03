@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface Props {
   pageId: string;
@@ -8,6 +9,7 @@ interface Props {
 
 export function ManageLanesDialog({ pageId, onClose }: Props) {
   const { data, addLaneFromTemplate, removeLane } = useScheduleStore();
+  const tc = useThemeColors();
   const [searchText, setSearchText] = useState('');
   const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
 
@@ -64,18 +66,18 @@ export function ManageLanesDialog({ pageId, onClose }: Props) {
         <div className="field">
           <label>現在のレーン</label>
           <div style={{
-            background: '#f5f5f5', borderRadius: 4, padding: 8,
+            background: tc.surfaceSecondary, borderRadius: 4, padding: 8,
             maxHeight: 180, overflowY: 'auto', marginTop: 4,
           }}>
             {page.swimLanes.length === 0 ? (
-              <span style={{ fontSize: 12, color: '#999' }}>レーンなし</span>
+              <span style={{ fontSize: 12, color: tc.textMuted }}>レーンなし</span>
             ) : (
               page.swimLanes.map((lane) => (
                 <div
                   key={lane.id}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '4px 0', fontSize: 13,
+                    padding: '4px 0', fontSize: 13, color: tc.textPrimary,
                   }}
                 >
                   <span>{lane.label}</span>
@@ -83,8 +85,8 @@ export function ManageLanesDialog({ pageId, onClose }: Props) {
                     onClick={() => handleRemoveLane(lane.id)}
                     style={{
                       padding: '2px 8px', fontSize: 11, cursor: 'pointer',
-                      border: '1px solid #e53e3e', borderRadius: 4,
-                      background: 'transparent', color: '#e53e3e',
+                      border: `1px solid ${tc.danger}`, borderRadius: 4,
+                      background: 'transparent', color: tc.danger,
                     }}
                   >
                     削除
@@ -102,14 +104,19 @@ export function ManageLanesDialog({ pageId, onClose }: Props) {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder="テキスト検索"
-            style={{ width: '100%', padding: '4px 8px', fontSize: 13, marginTop: 4 }}
+            style={{
+              width: '100%', padding: '4px 8px', fontSize: 13, marginTop: 4,
+              background: tc.inputBg, color: tc.textPrimary,
+              border: `1px solid ${tc.inputBorder}`, borderRadius: 4,
+              fontFamily: 'inherit',
+            }}
           />
           <div style={{
-            background: '#f5f5f5', borderRadius: 4, padding: 8,
+            background: tc.surfaceSecondary, borderRadius: 4, padding: 8,
             maxHeight: 160, overflowY: 'auto', marginTop: 4,
           }}>
             {availableTemplates.length === 0 ? (
-              <span style={{ fontSize: 12, color: '#999' }}>追加可能なレーンなし</span>
+              <span style={{ fontSize: 12, color: tc.textMuted }}>追加可能なレーンなし</span>
             ) : (
               availableTemplates.map((tmpl) => (
                 <label
@@ -117,6 +124,7 @@ export function ManageLanesDialog({ pageId, onClose }: Props) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     fontSize: 13, cursor: 'pointer', padding: '3px 0',
+                    color: tc.textPrimary,
                   }}
                 >
                   <input
@@ -126,12 +134,12 @@ export function ManageLanesDialog({ pageId, onClose }: Props) {
                   />
                   <span>{tmpl.label}</span>
                   {tmpl.tags.length > 0 && (
-                    <span style={{ marginLeft: 'auto', color: '#999', fontSize: 11 }}>
+                    <span style={{ marginLeft: 'auto', color: tc.textMuted, fontSize: 11 }}>
                       [{tmpl.tags.join(', ')}]
                     </span>
                   )}
                   {tmpl.tags.length === 0 && (
-                    <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: 11 }}>
+                    <span style={{ marginLeft: 'auto', color: tc.textMuted, fontSize: 11 }}>
                       (タグなし)
                     </span>
                   )}
