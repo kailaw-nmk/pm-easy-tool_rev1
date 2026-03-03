@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine } from '../types/schedule';
+import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine, PartialScheduleExport, ConflictResolution } from '../types/schedule';
+import { remapPageIds, mergeLaneRegistry, applyRegistryIdRemap } from '../lib/import-utils';
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
 import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
@@ -68,6 +69,8 @@ interface ScheduleState {
   // Import/Export
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
+  downloadPartial: (pageIds: string[]) => Promise<void>;
+  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>) => void;
   // Undo/Redo
   undo: () => void;
   redo: () => void;
@@ -990,5 +993,119 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     a.download = defaultName;
     a.click();
     URL.revokeObjectURL(url);
+  },
+
+  downloadPartial: async (pageIds: string[]) => {
+    const { data } = get();
+    if (!data || pageIds.length === 0) return;
+
+    const selectedPages = data.pages.filter((p) => pageIds.includes(p.id));
+    if (selectedPages.length === 0) return;
+
+    // Collect referenced registryIds
+    const usedRegistryIds = new Set<string>();
+    for (const page of selectedPages) {
+      for (const lane of page.swimLanes) {
+        if (lane.registryId) usedRegistryIds.add(lane.registryId);
+      }
+    }
+    const registry = (data.laneRegistry ?? []).filter((t) => usedRegistryIds.has(t.id));
+
+    const partial: PartialScheduleExport = {
+      exportType: 'partial',
+      version: data.version,
+      exportedAt: new Date().toISOString(),
+      pages: JSON.parse(JSON.stringify(selectedPages)),
+      laneRegistry: JSON.parse(JSON.stringify(registry)),
+    };
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const pageLabel = selectedPages.length === 1
+      ? selectedPages[0].name.replace(/[\\/:*?"<>|]/g, '_')
+      : `${selectedPages.length}pages`;
+    const defaultName = `schedule_partial_${pageLabel}_${yyyy}${mm}${dd}.json`;
+    const json = JSON.stringify(partial, null, 2);
+
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        return;
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultName;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>) => {
+    set((state) => {
+      if (!state.data) return {};
+
+      // 1. Remap all IDs
+      const remappedPages = remapPageIds(partialData.pages);
+
+      // 2. Merge lane registry
+      const { mergedRegistry, registryIdRemap } = mergeLaneRegistry(
+        state.data.laneRegistry ?? [],
+        partialData.laneRegistry,
+        remappedPages,
+      );
+
+      // 3. Apply registry ID remap
+      applyRegistryIdRemap(remappedPages, registryIdRemap);
+
+      // 4. Apply conflict resolutions
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        draft.laneRegistry = mergedRegistry;
+
+        const existingNames = draft.pages.map((p) => p.name);
+
+        for (const page of remappedPages) {
+          const resolution = resolutions.get(page.name);
+
+          if (resolution === 'skip') {
+            continue;
+          } else if (resolution === 'overwrite') {
+            // Remove existing page(s) with same name
+            draft.pages = draft.pages.filter((p) => p.name !== page.name);
+            draft.pages.push(page);
+          } else {
+            // 'add' or no conflict
+            if (existingNames.includes(page.name)) {
+              // Find unique suffix
+              let suffix = 2;
+              while (existingNames.includes(`${page.name} (${suffix})`)) {
+                suffix++;
+              }
+              page.name = `${page.name} (${suffix})`;
+              existingNames.push(page.name);
+            }
+            draft.pages.push(page);
+          }
+        }
+
+        draft.lastModified = new Date().toISOString();
+      });
+
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
   },
 }));

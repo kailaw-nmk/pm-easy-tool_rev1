@@ -138,3 +138,13 @@ export interface ScheduleData {
   laneRegistry?: LaneTemplate[];
   settings?: DisplaySettings;
 }
+
+export interface PartialScheduleExport {
+  exportType: 'partial';
+  version: string;
+  exportedAt: string;
+  pages: SchedulePage[];
+  laneRegistry: LaneTemplate[];
+}
+
+export type ConflictResolution = 'add' | 'overwrite' | 'skip';

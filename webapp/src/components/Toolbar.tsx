@@ -6,18 +6,26 @@ import { SettingsPopover } from './SettingsPopover';
 import { LaneRegistryPanel } from './LaneRegistryPanel';
 import { ToolbarDropdown } from './ToolbarDropdown';
 import { HelpManual } from './HelpManual';
+import { ExportPageDialog } from './ExportPageDialog';
+import { ImportConflictDialog } from './ImportConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
 import { exportToPng, exportToPdf } from '../lib/client-export';
-import type { ZoomLevel, DisplayMode } from '../types/schedule';
+import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution } from '../types/schedule';
 
 export function Toolbar() {
-  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData } = useScheduleStore();
+  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive } = useScheduleStore();
   const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme, setShowHome } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [pendingPartialImport, setPendingPartialImport] = useState<{
+    data: PartialScheduleExport;
+    conflicts: { pageName: string }[];
+    nonConflicts: { name: string }[];
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-switch to Fixed when Day zoom is selected
@@ -72,17 +80,51 @@ export function Toolbar() {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result as string);
-        if (!parsed.version || !parsed.timeline || !Array.isArray(parsed.pages)) {
-          alert('Invalid schedule JSON: missing required fields (version, timeline, pages)');
-          return;
+
+        if (parsed.exportType === 'partial') {
+          // Partial (additive) import
+          if (!Array.isArray(parsed.pages)) {
+            alert('無効な部分エクスポートファイルです。');
+            return;
+          }
+          const partialData = parsed as PartialScheduleExport;
+          const existingNames = new Set((data?.pages ?? []).map((p) => p.name));
+          const conflicts: { pageName: string }[] = [];
+          const nonConflicts: { name: string }[] = [];
+          for (const page of partialData.pages) {
+            if (existingNames.has(page.name)) {
+              conflicts.push({ pageName: page.name });
+            } else {
+              nonConflicts.push({ name: page.name });
+            }
+          }
+          if (conflicts.length > 0) {
+            setPendingPartialImport({ data: partialData, conflicts, nonConflicts });
+          } else {
+            importDataAdditive(partialData, new Map());
+          }
+        } else {
+          // Full import
+          if (!parsed.version || !parsed.timeline || !Array.isArray(parsed.pages)) {
+            alert('Invalid schedule JSON: missing required fields (version, timeline, pages)');
+            return;
+          }
+          if (!confirm('全データを上書きします。よろしいですか？')) return;
+          importData(parsed);
         }
-        importData(parsed);
       } catch {
         alert('Failed to parse JSON file.');
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleConflictResolved = (resolutions: Map<string, ConflictResolution>) => {
+    if (pendingPartialImport) {
+      importDataAdditive(pendingPartialImport.data, resolutions);
+      setPendingPartialImport(null);
+    }
   };
 
   return (
@@ -222,8 +264,8 @@ export function Toolbar() {
         <ToolbarDropdown
           trigger={<>{'\u22EF'} {'\u25BC'}</>}
           items={[
-            { label: 'Import', onClick: () => fileInputRef.current?.click() },
-            { label: 'Download', onClick: () => downloadData() },
+            { label: '\u30A4\u30F3\u30DD\u30FC\u30C8', onClick: () => fileInputRef.current?.click() },
+            { label: '\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8', onClick: () => setShowExportDialog(true) },
             { label: 'PNG', onClick: () => handleExport('png') },
             { label: 'PDF', onClick: () => handleExport('pdf') },
           ]}
@@ -252,6 +294,21 @@ export function Toolbar() {
 
       {showHelp && (
         <HelpManual onClose={() => setShowHelp(false)} />
+      )}
+
+      {showExportDialog && (
+        <ExportPageDialog onClose={() => setShowExportDialog(false)} />
+      )}
+
+      {pendingPartialImport && (
+        <ImportConflictDialog
+          conflicts={pendingPartialImport.conflicts}
+          nonConflicts={pendingPartialImport.data.pages.filter(
+            (p) => !pendingPartialImport.conflicts.some((c) => c.pageName === p.name)
+          )}
+          onConfirm={handleConflictResolved}
+          onClose={() => setPendingPartialImport(null)}
+        />
       )}
     </>
   );
