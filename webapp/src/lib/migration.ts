@@ -28,7 +28,32 @@ export function migrateData(data: ScheduleData): ScheduleData {
     migrated = migrateV31toV32(migrated);
   }
 
+  // v3.2.0 → v3.3.0
+  if (migrated.version === '3.2.0') {
+    migrated = migrateV32toV33(migrated);
+  }
+
   return migrated;
+}
+
+function migrateV32toV33(data: ScheduleData): ScheduleData {
+  const registry = data.laneRegistry ?? [];
+  // Build a map from template id to template for quick lookup
+  const tmplMap = new Map(registry.map((t) => [t.id, t]));
+
+  for (const page of data.pages) {
+    for (const lane of page.swimLanes) {
+      if (!lane.registryId) continue;
+      const tmpl = tmplMap.get(lane.registryId);
+      if (!tmpl) continue;
+      // Add page name as tag if not already present
+      if (!tmpl.tags.includes(page.name)) {
+        tmpl.tags.push(page.name);
+      }
+    }
+  }
+
+  return { ...data, version: '3.3.0', laneRegistry: registry };
 }
 
 function migrateV31toV32(data: ScheduleData): ScheduleData {

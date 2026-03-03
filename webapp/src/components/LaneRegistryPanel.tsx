@@ -56,7 +56,7 @@ export function LaneRegistryPanel({ onClose }: Props) {
           <thead>
             <tr>
               <th>ラベル</th>
-              <th>タグ</th>
+              <th>所属スケジュール</th>
               <th>高さ(px)</th>
               <th>操作</th>
             </tr>

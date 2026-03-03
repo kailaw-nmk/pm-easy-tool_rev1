@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { AddScheduleDialog } from './AddScheduleDialog';
+import { ManageLanesDialog } from './ManageLanesDialog';
 
 interface TabContextMenu {
   x: number;
@@ -13,6 +14,7 @@ export function PageTabs() {
   const { data, currentPageId, setCurrentPage, removePage, renamePage, reorderPage } = useScheduleStore();
   const tc = useThemeColors();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [manageLanesPageId, setManageLanesPageId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<TabContextMenu | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -123,6 +125,7 @@ export function PageTabs() {
           <button onClick={handleMoveLeft} disabled={!canMoveLeft}>左に移動</button>
           <button onClick={handleMoveRight} disabled={!canMoveRight}>右に移動</button>
           <button onClick={handleRename}>名前変更</button>
+          <button onClick={() => { setManageLanesPageId(contextMenu.pageId); setContextMenu(null); }}>レーン管理...</button>
           <button
             className="danger"
             onClick={handleDelete}
@@ -136,6 +139,14 @@ export function PageTabs() {
       {/* Add schedule dialog */}
       {showAddDialog && (
         <AddScheduleDialog onClose={() => setShowAddDialog(false)} />
+      )}
+
+      {/* Manage lanes dialog */}
+      {manageLanesPageId && (
+        <ManageLanesDialog
+          pageId={manageLanesPageId}
+          onClose={() => setManageLanesPageId(null)}
+        />
       )}
     </>
   );

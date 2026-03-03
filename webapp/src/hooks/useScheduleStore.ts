@@ -35,6 +35,7 @@ interface ScheduleState {
   // Lane operations
   updateLaneHeight: (pageId: string, laneId: string, heightPx: number) => void;
   addLane: (pageId: string, lane: SwimLane) => void;
+  addLaneFromTemplate: (pageId: string, templateId: string) => void;
   removeLane: (pageId: string, laneId: string) => void;
   reorderLane: (pageId: string, laneId: string, direction: 'up' | 'down') => void;
   moveLane: (pageId: string, laneId: string, newIndex: number) => void;
@@ -45,7 +46,7 @@ interface ScheduleState {
   addRegistryTemplate: (template: LaneTemplate) => void;
   removeRegistryTemplate: (templateId: string) => void;
   // Page management
-  addPage: (name: string, filterTags: string[]) => void;
+  addPage: (name: string, selectedTemplateIds: string[]) => void;
   removePage: (pageId: string) => void;
   renamePage: (pageId: string, name: string) => void;
   reorderPage: (pageId: string, direction: 'left' | 'right') => void;
@@ -328,6 +329,39 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     });
   },
 
+  addLaneFromTemplate: (pageId, templateId) => {
+    set((state) => {
+      if (!state.data) return {};
+      const page = state.data.pages.find((p) => p.id === pageId);
+      if (!page) return {};
+      // Prevent duplicate: check if lane with same registryId already exists
+      if (page.swimLanes.some((l) => l.registryId === templateId)) return {};
+      const tmpl = state.data.laneRegistry?.find((t) => t.id === templateId);
+      if (!tmpl) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const draftPage = draft.pages.find((p) => p.id === pageId);
+        if (!draftPage) return;
+        const draftTmpl = draft.laneRegistry?.find((t) => t.id === templateId);
+        if (draftTmpl && !draftTmpl.tags.includes(draftPage.name)) {
+          draftTmpl.tags.push(draftPage.name);
+        }
+        draftPage.swimLanes.push({
+          id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          label: tmpl.label,
+          heightPx: tmpl.defaultHeightPx,
+          bars: [],
+          milestones: [],
+          tags: draftTmpl ? [...draftTmpl.tags] : [],
+          registryId: tmpl.id,
+        });
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
   removeLane: (pageId, laneId) => {
     set((state) => {
       const historyUpdate = pushHistory(state);
@@ -337,6 +371,13 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         // Collect milestone IDs in this lane for schedule line cascade
         const laneObj = page.swimLanes.find((l) => l.id === laneId);
         const msIds = new Set(laneObj?.milestones.map((m) => m.id) ?? []);
+        // Remove schedule name tag from template
+        if (laneObj?.registryId) {
+          const tmpl = draft.laneRegistry?.find((t) => t.id === laneObj.registryId);
+          if (tmpl) {
+            tmpl.tags = tmpl.tags.filter((t) => t !== page.name);
+          }
+        }
         page.swimLanes = page.swimLanes.filter((l) => l.id !== laneId);
         if (page.connections) {
           page.connections = page.connections.filter(
@@ -448,33 +489,36 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     });
   },
 
-  addPage: (name, filterTags) => {
+  addPage: (name, selectedTemplateIds) => {
     set((state) => {
       if (!state.data) return {};
       const historyUpdate = pushHistory(state);
       const newPageId = `page_${Date.now()}`;
       const newData = produce(state.data, (draft) => {
         const registry = draft.laneRegistry ?? [];
-        // Select templates: matching filterTags OR no tags (empty array)
-        const matchingTemplates = registry.filter((tmpl) => {
-          if (tmpl.tags.length === 0) return true;
-          return tmpl.tags.some((t) => filterTags.includes(t));
+        const selectedSet = new Set(selectedTemplateIds);
+        const matchingTemplates = registry.filter((tmpl) => selectedSet.has(tmpl.id));
+        const swimLanes: SwimLane[] = matchingTemplates.map((tmpl) => {
+          // Add schedule name to template tags
+          if (!tmpl.tags.includes(name)) {
+            tmpl.tags.push(name);
+          }
+          return {
+            id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            label: tmpl.label,
+            heightPx: tmpl.defaultHeightPx,
+            bars: [],
+            milestones: [],
+            tags: [...tmpl.tags],
+            registryId: tmpl.id,
+          };
         });
-        const swimLanes: SwimLane[] = matchingTemplates.map((tmpl) => ({
-          id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          label: tmpl.label,
-          heightPx: tmpl.defaultHeightPx,
-          bars: [],
-          milestones: [],
-          tags: [...tmpl.tags],
-          registryId: tmpl.id,
-        }));
         draft.pages.push({
           id: newPageId,
           name,
           swimLanes,
           annotations: [],
-          filterTags,
+          filterTags: [],
         });
         draft.lastModified = new Date().toISOString();
       });
@@ -486,8 +530,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   removePage: (pageId) => {
     set((state) => {
       if (!state.data || state.data.pages.length <= 1) return {};
+      const pageName = state.data.pages.find((p) => p.id === pageId)?.name;
       const historyUpdate = pushHistory(state);
       const newData = produce(state.data, (draft) => {
+        // Remove schedule name tag from all templates
+        if (pageName && draft.laneRegistry) {
+          for (const tmpl of draft.laneRegistry) {
+            tmpl.tags = tmpl.tags.filter((t) => t !== pageName);
+          }
+        }
         draft.pages = draft.pages.filter((p) => p.id !== pageId);
         draft.lastModified = new Date().toISOString();
       });
@@ -505,7 +556,21 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const newData = produce(state.data!, (draft) => {
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page) return;
+        const oldName = page.name;
         page.name = name;
+        // Update tags in all templates: replace oldName with newName
+        if (draft.laneRegistry) {
+          for (const tmpl of draft.laneRegistry) {
+            const idx = tmpl.tags.indexOf(oldName);
+            if (idx !== -1) {
+              tmpl.tags[idx] = name;
+            }
+          }
+        }
+        // Update filterTags on the page
+        if (page.filterTags) {
+          page.filterTags = page.filterTags.map((t) => (t === oldName ? name : t));
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

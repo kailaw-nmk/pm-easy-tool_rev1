@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 
 interface Props {
@@ -8,49 +8,86 @@ interface Props {
 export function AddScheduleDialog({ onClose }: Props) {
   const { data, addPage } = useScheduleStore();
   const [name, setName] = useState('');
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
+  const [searchText, setSearchText] = useState('');
+  const [filterScheduleName, setFilterScheduleName] = useState('');
 
-  // Collect all unique tags from the lane registry
-  const allTags = useMemo(() => {
-    const registry = data?.laneRegistry ?? [];
-    const tagSet = new Set<string>();
-    for (const tmpl of registry) {
-      for (const tag of tmpl.tags) {
-        tagSet.add(tag);
+  const registry = data?.laneRegistry ?? [];
+
+  // Collect existing schedule names for the filter dropdown
+  const scheduleNames = useMemo(() => {
+    const names = (data?.pages ?? []).map((p) => p.name);
+    return Array.from(new Set(names)).sort();
+  }, [data?.pages]);
+
+  // Filter templates based on schedule name filter and text search
+  const filteredTemplates = useMemo(() => {
+    return registry.filter((tmpl) => {
+      // Schedule name filter
+      if (filterScheduleName && !tmpl.tags.includes(filterScheduleName)) {
+        return false;
       }
-    }
-    return Array.from(tagSet).sort();
-  }, [data?.laneRegistry]);
+      // Text search
+      if (searchText && !tmpl.label.toLowerCase().includes(searchText.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [registry, filterScheduleName, searchText]);
 
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) => {
+  const toggleTemplate = useCallback((id: string) => {
+    setSelectedTemplateIds((prev) => {
       const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  // Preview: which templates would be included
-  const previewLanes = useMemo(() => {
-    const registry = data?.laneRegistry ?? [];
-    const tags = Array.from(selectedTags);
-    return registry.filter((tmpl) => {
-      if (tmpl.tags.length === 0) return true; // no tags = always included
-      return tmpl.tags.some((t) => tags.includes(t));
+  const handleSelectAll = useCallback(() => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev);
+      for (const tmpl of filteredTemplates) {
+        next.add(tmpl.id);
+      }
+      return next;
     });
-  }, [data?.laneRegistry, selectedTags]);
+  }, [filteredTemplates]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev);
+      for (const tmpl of filteredTemplates) {
+        next.delete(tmpl.id);
+      }
+      return next;
+    });
+  }, [filteredTemplates]);
+
+  const handleFilterChange = useCallback((scheduleName: string) => {
+    setFilterScheduleName(scheduleName);
+    if (scheduleName) {
+      // Auto-preselect templates matching this schedule
+      const matching = registry.filter((tmpl) => tmpl.tags.includes(scheduleName));
+      setSelectedTemplateIds((prev) => {
+        const next = new Set(prev);
+        for (const tmpl of matching) {
+          next.add(tmpl.id);
+        }
+        return next;
+      });
+    }
+  }, [registry]);
 
   const handleCreate = () => {
     if (!name.trim()) return;
-    addPage(name.trim(), Array.from(selectedTags));
+    addPage(name.trim(), Array.from(selectedTemplateIds));
     onClose();
   };
 
   return (
     <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 550 }}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
         <h3>新規スケジュール作成</h3>
         <div className="field">
           <label>スケジュール名</label>
@@ -63,41 +100,82 @@ export function AddScheduleDialog({ onClose }: Props) {
           />
         </div>
 
-        {allTags.length > 0 && (
-          <div className="field">
-            <label>含めるタグ（チェックしたタグのレーンが初期配置されます）</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-              {allTags.map((tag) => (
-                <label key={tag} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTags.has(tag)}
-                    onChange={() => toggleTag(tag)}
-                  />
-                  <span className="tag-chip" style={{ cursor: 'pointer' }}>{tag}</span>
-                </label>
+        <div className="field" style={{ marginTop: 12 }}>
+          <label>フィルタ</label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <select
+              value={filterScheduleName}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              style={{ flex: 1, padding: '4px 8px', fontSize: 13 }}
+            >
+              <option value="">既存スケジュール名で絞込</option>
+              {scheduleNames.map((sn) => (
+                <option key={sn} value={sn}>{sn}</option>
               ))}
-            </div>
+            </select>
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="テキスト検索"
+              style={{ flex: 1, padding: '4px 8px', fontSize: 13 }}
+            />
           </div>
-        )}
+        </div>
 
         <div className="field" style={{ marginTop: 12 }}>
-          <label>含まれるレーン（プレビュー）</label>
-          <div style={{ background: '#f5f5f5', borderRadius: 4, padding: 8, fontSize: 12, color: '#555', maxHeight: 120, overflowY: 'auto' }}>
-            {previewLanes.length === 0 ? (
-              <span>レーンなし</span>
+          <label>レーン選択</label>
+          <div style={{
+            background: '#f5f5f5', borderRadius: 4, padding: 8,
+            maxHeight: 200, overflowY: 'auto', marginTop: 4,
+          }}>
+            {filteredTemplates.length === 0 ? (
+              <span style={{ fontSize: 12, color: '#999' }}>該当するレーンなし</span>
             ) : (
-              previewLanes.map((tmpl) => (
-                <div key={tmpl.id} style={{ padding: '2px 0' }}>
-                  {tmpl.label}
+              filteredTemplates.map((tmpl) => (
+                <label
+                  key={tmpl.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    fontSize: 13, cursor: 'pointer', padding: '3px 0',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTemplateIds.has(tmpl.id)}
+                    onChange={() => toggleTemplate(tmpl.id)}
+                  />
+                  <span>{tmpl.label}</span>
                   {tmpl.tags.length > 0 && (
-                    <span style={{ marginLeft: 8, color: '#999' }}>
+                    <span style={{ marginLeft: 'auto', color: '#999', fontSize: 11 }}>
                       [{tmpl.tags.join(', ')}]
                     </span>
                   )}
-                </div>
+                  {tmpl.tags.length === 0 && (
+                    <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: 11 }}>
+                      (タグなし)
+                    </span>
+                  )}
+                </label>
               ))
             )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <button
+              onClick={handleSelectAll}
+              style={{ fontSize: 12, padding: '2px 10px', cursor: 'pointer' }}
+            >
+              全選択
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              style={{ fontSize: 12, padding: '2px 10px', cursor: 'pointer' }}
+            >
+              全解除
+            </button>
+            <span style={{ fontSize: 12, color: '#888', marginLeft: 'auto', alignSelf: 'center' }}>
+              {selectedTemplateIds.size}件選択中
+            </span>
           </div>
         </div>
 
