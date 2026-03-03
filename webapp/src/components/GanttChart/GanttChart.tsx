@@ -597,38 +597,49 @@ export function GanttChart() {
           onPointerMove={handlePointerMoveUnified}
           onPointerUp={handlePointerUpUnified}
         >
+          {/* clipPath for content area (prevents items from bleeding into lane header) */}
+          <defs>
+            <clipPath id="content-area-clip">
+              <rect x={headerWidth} y={0} width={totalWidth - headerWidth} height={bodyHeight} />
+            </clipPath>
+          </defs>
+
           {/* Background */}
           <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
 
           {/* Connection arrows (below swim lanes so bars remain clickable) */}
-          <ConnectionLayer
-            resolvedConnections={resolvedConns}
-            showMemos={showMemos}
-            selectedConnectionId={selectedConnectionId}
-            onConnectionClick={handleConnectionClick}
-            onConnectionDoubleClick={handleConnectionDoubleClick}
-            onConnectionContextMenu={handleConnectionContextMenu}
-          />
+          <g clipPath="url(#content-area-clip)">
+            <ConnectionLayer
+              resolvedConnections={resolvedConns}
+              showMemos={showMemos}
+              selectedConnectionId={selectedConnectionId}
+              onConnectionClick={handleConnectionClick}
+              onConnectionDoubleClick={handleConnectionDoubleClick}
+              onConnectionContextMenu={handleConnectionContextMenu}
+            />
+          </g>
 
           {/* Schedule lines (vertical lines from milestones) */}
-          <ScheduleLineLayer
-            page={page}
-            timeline={timeline}
-            headerWidth={headerWidth}
-            zoomLevel={zoomLevel}
-            bodyHeight={bodyHeight}
-            selectedScheduleLineId={selectedScheduleLineId}
-            onScheduleLineClick={(e, lineId) => {
-              e.stopPropagation();
-              clearSelection();
-              setSelectedConnectionId(null);
-              setSelectedScheduleLineId(lineId);
-            }}
-            onScheduleLineContextMenu={(e, lineId) => {
-              setSelectedScheduleLineId(lineId);
-              setContextMenu({ x: e.clientX, y: e.clientY, type: 'scheduleLine', id: lineId, laneId: '' });
-            }}
-          />
+          <g clipPath="url(#content-area-clip)">
+            <ScheduleLineLayer
+              page={page}
+              timeline={timeline}
+              headerWidth={headerWidth}
+              zoomLevel={zoomLevel}
+              bodyHeight={bodyHeight}
+              selectedScheduleLineId={selectedScheduleLineId}
+              onScheduleLineClick={(e, lineId) => {
+                e.stopPropagation();
+                clearSelection();
+                setSelectedConnectionId(null);
+                setSelectedScheduleLineId(lineId);
+              }}
+              onScheduleLineContextMenu={(e, lineId) => {
+                setSelectedScheduleLineId(lineId);
+                setContextMenu({ x: e.clientX, y: e.clientY, type: 'scheduleLine', id: lineId, laneId: '' });
+              }}
+            />
+          </g>
 
           {/* Swim lanes (y starts from 0) */}
           {effectiveLanes.map((lane, i) => {
@@ -723,7 +734,9 @@ export function GanttChart() {
           })()}
 
           {/* Today line (body only — vertical line) */}
-          <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={bodyHeight} zoomLevel={zoomLevel} region="body" />
+          <g clipPath="url(#content-area-clip)">
+            <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={bodyHeight} zoomLevel={zoomLevel} region="body" />
+          </g>
         </svg>
       </div>
 

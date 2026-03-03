@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { AddScheduleDialog } from './AddScheduleDialog';
-import { ManageLanesDialog } from './ManageLanesDialog';
 
 interface TabContextMenu {
   x: number;
@@ -11,13 +10,17 @@ interface TabContextMenu {
 }
 
 export function PageTabs() {
-  const { data, currentPageId, setCurrentPage, removePage, renamePage, reorderPage } = useScheduleStore();
+  const { data, currentPageId, setCurrentPage, removePage, renamePage, reorderPage, movePageToIndex } = useScheduleStore();
   const tc = useThemeColors();
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [manageLanesPageId, setManageLanesPageId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<TabContextMenu | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  // Drag state
+  const dragRef = useRef<{ pageId: string; startX: number; isDragging: boolean } | null>(null);
+  const [dragState, setDragState] = useState<{ draggingPageId: string; dropIndex: number } | null>(null);
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const handleContextMenu = useCallback((e: React.MouseEvent, pageId: string) => {
     e.preventDefault();
@@ -65,6 +68,62 @@ export function PageTabs() {
     setContextMenu(null);
   }, [contextMenu, removePage]);
 
+  // Drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent, pageId: string) => {
+    if (e.button !== 0 || renaming) return;
+    dragRef.current = { pageId, startX: e.clientX, isDragging: false };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }, [renaming]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || !data) return;
+    const dx = e.clientX - dragRef.current.startX;
+    if (!dragRef.current.isDragging && Math.abs(dx) < 3) return;
+    dragRef.current.isDragging = true;
+
+    // Calculate drop index based on mouse position relative to tab centers
+    const mouseX = e.clientX;
+    let dropIndex = 0;
+    const pages = data.pages;
+    for (let i = 0; i < pages.length; i++) {
+      const el = tabRefs.current.get(pages[i].id);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      if (mouseX > center) {
+        dropIndex = i + 1;
+      }
+    }
+    // Adjust: if dragging page is before dropIndex, the effective insert position shifts
+    const dragIndex = pages.findIndex((p) => p.id === dragRef.current!.pageId);
+    if (dragIndex < dropIndex) dropIndex = Math.min(dropIndex, pages.length);
+
+    setDragState({ draggingPageId: dragRef.current.pageId, dropIndex });
+  }, [data]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const wasDragging = dragRef.current.isDragging;
+    const pageId = dragRef.current.pageId;
+
+    if (wasDragging && dragState && data) {
+      const dragIndex = data.pages.findIndex((p) => p.id === pageId);
+      let targetIndex = dragState.dropIndex;
+      // splice logic: if moving forward, subtract 1 for removal shift
+      if (dragIndex < targetIndex) targetIndex--;
+      if (targetIndex !== dragIndex) {
+        movePageToIndex(pageId, targetIndex);
+      }
+    } else if (!wasDragging) {
+      // Normal click — switch page
+      setCurrentPage(pageId);
+    }
+
+    dragRef.current = null;
+    setDragState(null);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  }, [dragState, data, movePageToIndex, setCurrentPage]);
+
   if (!data) return null;
 
   const canDelete = data.pages.length > 1;
@@ -72,15 +131,41 @@ export function PageTabs() {
   const canMoveLeft = contextPageIdx > 0;
   const canMoveRight = contextPageIdx >= 0 && contextPageIdx < data.pages.length - 1;
 
+  // Calculate drop indicator position
+  let dropIndicatorLeft: number | null = null;
+  if (dragState) {
+    const pages = data.pages;
+    if (dragState.dropIndex === 0) {
+      const firstEl = tabRefs.current.get(pages[0]?.id);
+      if (firstEl) {
+        const containerRect = firstEl.parentElement?.getBoundingClientRect();
+        const tabRect = firstEl.getBoundingClientRect();
+        if (containerRect) dropIndicatorLeft = tabRect.left - containerRect.left;
+      }
+    } else {
+      const prevPage = pages[Math.min(dragState.dropIndex - 1, pages.length - 1)];
+      const el = tabRefs.current.get(prevPage?.id);
+      if (el) {
+        const containerRect = el.parentElement?.getBoundingClientRect();
+        const tabRect = el.getBoundingClientRect();
+        if (containerRect) dropIndicatorLeft = tabRect.right - containerRect.left;
+      }
+    }
+  }
+
   return (
     <>
-      <div className="page-tabs" onClick={() => setContextMenu(null)}>
+      <div className="page-tabs" onClick={() => setContextMenu(null)} style={{ position: 'relative' }}>
         {data.pages.map((page) => (
           <button
             key={page.id}
-            className={page.id === currentPageId ? 'active' : ''}
-            onClick={() => setCurrentPage(page.id)}
+            ref={(el) => { if (el) tabRefs.current.set(page.id, el); else tabRefs.current.delete(page.id); }}
+            className={`${page.id === currentPageId ? 'active' : ''} ${dragState?.draggingPageId === page.id ? 'tab-dragging' : ''}`}
+            onPointerDown={(e) => handlePointerDown(e, page.id)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
             onContextMenu={(e) => handleContextMenu(e, page.id)}
+            style={{ touchAction: 'none' }}
           >
             {renaming === page.id ? (
               <input
@@ -107,6 +192,22 @@ export function PageTabs() {
             )}
           </button>
         ))}
+
+        {/* Drop indicator */}
+        {dragState && dropIndicatorLeft !== null && (
+          <div style={{
+            position: 'absolute',
+            left: dropIndicatorLeft,
+            top: 4,
+            bottom: 4,
+            width: 2,
+            background: tc.accent,
+            borderRadius: 1,
+            pointerEvents: 'none',
+            zIndex: 10,
+          }} />
+        )}
+
         <button
           className="page-tab-add"
           onClick={() => setShowAddDialog(true)}
@@ -125,7 +226,6 @@ export function PageTabs() {
           <button onClick={handleMoveLeft} disabled={!canMoveLeft}>左に移動</button>
           <button onClick={handleMoveRight} disabled={!canMoveRight}>右に移動</button>
           <button onClick={handleRename}>名前変更</button>
-          <button onClick={() => { setCurrentPage(contextMenu.pageId); setManageLanesPageId(contextMenu.pageId); setContextMenu(null); }}>レーン管理...</button>
           <button
             className="danger"
             onClick={handleDelete}
@@ -139,14 +239,6 @@ export function PageTabs() {
       {/* Add schedule dialog */}
       {showAddDialog && (
         <AddScheduleDialog onClose={() => setShowAddDialog(false)} />
-      )}
-
-      {/* Manage lanes dialog */}
-      {manageLanesPageId && (
-        <ManageLanesDialog
-          pageId={manageLanesPageId}
-          onClose={() => setManageLanesPageId(null)}
-        />
       )}
     </>
   );

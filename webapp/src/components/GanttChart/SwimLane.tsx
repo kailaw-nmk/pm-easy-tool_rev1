@@ -170,51 +170,52 @@ export function SwimLaneComponent({
       <line x1={0} y1={yOffset + lane.heightPx} x2={totalWidth} y2={yOffset + lane.heightPx}
         stroke={tc.laneBorder} strokeWidth={1} />
 
-      {/* Bars */}
-      {lane.bars.map((bar) => (
-        <ScheduleBarComponent
-          key={bar.id}
-          bar={bar}
-          laneId={lane.id}
-          pageId={pageId}
-          laneY={yOffset}
-          timeline={timeline}
-          headerWidth={headerWidth}
-          zoomLevel={zoomLevel}
-          fontScale={fontScale}
-          laneHeight={lane.heightPx}
-          isSelected={selectedIds?.has(bar.id)}
-          showMemos={showMemos}
-          onDoubleClick={() => onBarDoubleClick(bar.id, lane.id)}
-          onContextMenu={(e) => onContextMenu(e, 'bar', bar.id, lane.id)}
-          onClick={(e) => onItemClick?.(e, 'bar', bar.id, lane.id)}
-          onTooltipShow={onTooltipShow}
-          onTooltipHide={onTooltipHide}
-        />
-      ))}
+      {/* Bars and Milestones (clipped to content area) */}
+      <g clipPath="url(#content-area-clip)">
+        {lane.bars.map((bar) => (
+          <ScheduleBarComponent
+            key={bar.id}
+            bar={bar}
+            laneId={lane.id}
+            pageId={pageId}
+            laneY={yOffset}
+            timeline={timeline}
+            headerWidth={headerWidth}
+            zoomLevel={zoomLevel}
+            fontScale={fontScale}
+            laneHeight={lane.heightPx}
+            isSelected={selectedIds?.has(bar.id)}
+            showMemos={showMemos}
+            onDoubleClick={() => onBarDoubleClick(bar.id, lane.id)}
+            onContextMenu={(e) => onContextMenu(e, 'bar', bar.id, lane.id)}
+            onClick={(e) => onItemClick?.(e, 'bar', bar.id, lane.id)}
+            onTooltipShow={onTooltipShow}
+            onTooltipHide={onTooltipHide}
+          />
+        ))}
 
-      {/* Milestones */}
-      {lane.milestones.map((ms) => (
-        <MilestoneComponent
-          key={ms.id}
-          milestone={ms}
-          laneId={lane.id}
-          pageId={pageId}
-          laneY={yOffset}
-          timeline={timeline}
-          headerWidth={headerWidth}
-          zoomLevel={zoomLevel}
-          fontScale={fontScale}
-          laneHeight={lane.heightPx}
-          isSelected={selectedIds?.has(ms.id)}
-          showMemos={showMemos}
-          onDoubleClick={() => onMilestoneDoubleClick(ms.id, lane.id)}
-          onContextMenu={(e) => onContextMenu(e, 'milestone', ms.id, lane.id)}
-          onClick={(e) => onItemClick?.(e, 'milestone', ms.id, lane.id)}
-          onTooltipShow={onTooltipShow}
-          onTooltipHide={onTooltipHide}
-        />
-      ))}
+        {lane.milestones.map((ms) => (
+          <MilestoneComponent
+            key={ms.id}
+            milestone={ms}
+            laneId={lane.id}
+            pageId={pageId}
+            laneY={yOffset}
+            timeline={timeline}
+            headerWidth={headerWidth}
+            zoomLevel={zoomLevel}
+            fontScale={fontScale}
+            laneHeight={lane.heightPx}
+            isSelected={selectedIds?.has(ms.id)}
+            showMemos={showMemos}
+            onDoubleClick={() => onMilestoneDoubleClick(ms.id, lane.id)}
+            onContextMenu={(e) => onContextMenu(e, 'milestone', ms.id, lane.id)}
+            onClick={(e) => onItemClick?.(e, 'milestone', ms.id, lane.id)}
+            onTooltipShow={onTooltipShow}
+            onTooltipHide={onTooltipHide}
+          />
+        ))}
+      </g>
 
       {/* Resize handle at bottom */}
       <LaneResizeHandle

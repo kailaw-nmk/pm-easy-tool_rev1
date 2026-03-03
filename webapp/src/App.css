@@ -135,6 +135,10 @@ body,
   font-weight: 600;
 }
 
+.page-tabs button.tab-dragging {
+  opacity: 0.5;
+}
+
 /* Gantt chart container */
 .gantt-container {
   flex: 1;
@@ -654,7 +658,7 @@ svg.gantt-chart {
 
 /* Lane registry panel */
 .lane-registry-panel {
-  max-width: 700px !important;
+  max-width: 800px !important;
   min-width: 600px;
 }
 

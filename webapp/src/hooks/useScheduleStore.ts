@@ -50,6 +50,7 @@ interface ScheduleState {
   removePage: (pageId: string) => void;
   renamePage: (pageId: string, name: string) => void;
   reorderPage: (pageId: string, direction: 'left' | 'right') => void;
+  movePageToIndex: (pageId: string, newIndex: number) => void;
   // Page-specific timeline
   updatePageTimeline: (pageId: string, updates: { startDate?: string; endDate?: string }) => void;
   updatePageMonthWidth: (pageId: string, widthPx: number) => void;
@@ -588,6 +589,24 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
         if (swapIdx < 0 || swapIdx >= draft.pages.length) return;
         [draft.pages[idx], draft.pages[swapIdx]] = [draft.pages[swapIdx], draft.pages[idx]];
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  movePageToIndex: (pageId, newIndex) => {
+    set((state) => {
+      if (!state.data) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const idx = draft.pages.findIndex((p) => p.id === pageId);
+        if (idx < 0) return;
+        const clampedIndex = Math.max(0, Math.min(draft.pages.length - 1, newIndex));
+        if (idx === clampedIndex) return;
+        const [page] = draft.pages.splice(idx, 1);
+        draft.pages.splice(clampedIndex, 0, page);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
