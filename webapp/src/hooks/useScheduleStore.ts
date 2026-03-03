@@ -42,6 +42,7 @@ interface ScheduleState {
   // Tag operations
   updateLaneTags: (pageId: string, laneId: string, tags: string[]) => void;
   // Registry operations
+  syncLaneRegistry: () => void;
   updateRegistryTemplate: (templateId: string, updates: Partial<LaneTemplate>) => void;
   addRegistryTemplate: (template: LaneTemplate) => void;
   removeRegistryTemplate: (templateId: string) => void;
@@ -443,6 +444,55 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const lane = page.swimLanes.find((l) => l.id === laneId);
         if (!lane) return;
         lane.tags = tags;
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  syncLaneRegistry: () => {
+    set((state) => {
+      if (!state.data) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        if (!draft.laneRegistry) draft.laneRegistry = [];
+        const reg = draft.laneRegistry;
+        const tmplById = new Map(reg.map((t) => [t.id, t]));
+
+        // Reset all tags — rebuild from actual lane assignments
+        for (const t of reg) {
+          t.tags = [];
+        }
+
+        for (const page of draft.pages) {
+          for (const lane of page.swimLanes) {
+            if (lane.registryId && tmplById.has(lane.registryId)) {
+              // Template exists — add page name tag
+              const tmpl = tmplById.get(lane.registryId)!;
+              if (!tmpl.tags.includes(page.name)) {
+                tmpl.tags.push(page.name);
+              }
+            } else {
+              // No registryId or template missing — find by label or create
+              let tmpl = reg.find((t) => t.label === lane.label);
+              if (!tmpl) {
+                tmpl = {
+                  id: `tmpl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  label: lane.label,
+                  tags: [],
+                  defaultHeightPx: lane.heightPx,
+                };
+                reg.push(tmpl);
+                tmplById.set(tmpl.id, tmpl);
+              }
+              lane.registryId = tmpl.id;
+              if (!tmpl.tags.includes(page.name)) {
+                tmpl.tags.push(page.name);
+              }
+            }
+          }
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

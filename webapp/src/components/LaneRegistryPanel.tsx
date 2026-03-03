@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { LaneTemplate } from '../types/schedule';
@@ -8,11 +8,16 @@ interface Props {
 }
 
 export function LaneRegistryPanel({ onClose }: Props) {
-  const { data, currentPageId, updateRegistryTemplate, addRegistryTemplate, removeRegistryTemplate, addLaneFromTemplate, removeLane } = useScheduleStore();
+  const { data, currentPageId, syncLaneRegistry, updateRegistryTemplate, addRegistryTemplate, removeRegistryTemplate, addLaneFromTemplate, removeLane } = useScheduleStore();
   const tc = useThemeColors();
   const registry = data?.laneRegistry ?? [];
   const pages = data?.pages ?? [];
   const currentPage = pages.find((p) => p.id === currentPageId);
+
+  // マウント時にレジストリを同期
+  useEffect(() => {
+    syncLaneRegistry();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // セクション折りたたみ
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
