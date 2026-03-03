@@ -1,9 +1,10 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import type { Milestone, PageTimeline, ZoomLevel } from '../../types/schedule';
 import { itemX, type PositionContext } from '../../lib/position';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { measureMilestoneText } from '../../lib/measureText';
 
 interface Props {
   milestone: Milestone;
@@ -66,11 +67,25 @@ export function MilestoneComponent({
   const dateX = itemX(milestone.date, posCtx);
   const labelLineHeight = fontSizeMilestone + 3;
 
-  // Text area
-  const textW = Math.max(MIN_TEXT_WIDTH, (milestone.widthPx ?? DEFAULT_TEXT_WIDTH) + textResizeDelta.dw);
-  const textH = Math.max(MIN_TEXT_HEIGHT, (milestone.heightPx ?? DEFAULT_TEXT_HEIGHT) + textResizeDelta.dh);
-  const textX = dateX + (milestone.xOffsetPx ?? 0) + textDragOffset.dx;
-  const textY = laneY + milestone.yOffsetInLane + textDragOffset.dy;
+  // Text area — auto-size when widthPx/heightPx not explicitly set
+  const autoSize = useMemo(
+    () => measureMilestoneText(labelLines, fontSizeMilestone),
+    [labelLines, fontSizeMilestone],
+  );
+  const isAutoWidth = milestone.widthPx == null;
+  const isAutoHeight = milestone.heightPx == null;
+  const effectiveW = milestone.widthPx ?? Math.max(DEFAULT_TEXT_WIDTH, autoSize.width);
+  const effectiveH = milestone.heightPx ?? Math.max(DEFAULT_TEXT_HEIGHT, autoSize.height);
+
+  const textW = Math.max(MIN_TEXT_WIDTH, effectiveW + textResizeDelta.dw);
+  const textH = Math.max(MIN_TEXT_HEIGHT, effectiveH + textResizeDelta.dh);
+
+  // Center-based shift: expand from center so star position stays unchanged
+  const centerShiftX = isAutoWidth ? -(effectiveW - DEFAULT_TEXT_WIDTH) / 2 : 0;
+  const centerShiftY = isAutoHeight ? -(effectiveH - DEFAULT_TEXT_HEIGHT) / 2 : 0;
+
+  const textX = dateX + (milestone.xOffsetPx ?? 0) + centerShiftX + textDragOffset.dx;
+  const textY = laneY + milestone.yOffsetInLane + centerShiftY + textDragOffset.dy;
 
   // Star
   const starSizeBase = milestone.starSize ?? fontSizeMilestone * 1.6;
@@ -104,10 +119,10 @@ export function MilestoneComponent({
     (e.target as SVGElement).setPointerCapture(e.pointerId);
     textResizeRef.current = {
       startX: e.clientX, startY: e.clientY,
-      origW: milestone.widthPx ?? DEFAULT_TEXT_WIDTH,
-      origH: milestone.heightPx ?? DEFAULT_TEXT_HEIGHT,
+      origW: effectiveW,
+      origH: effectiveH,
     };
-  }, [milestone.widthPx, milestone.heightPx]);
+  }, [effectiveW, effectiveH]);
 
   // --- Star drag handlers ---
   const handleStarDragDown = useCallback((e: React.PointerEvent) => {
