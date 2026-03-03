@@ -6,6 +6,7 @@ export function SettingsPopover() {
     fontSizeLaneTitle, setFontSizeLaneTitle,
     fontSizeBarText, setFontSizeBarText,
     fontSizeMilestone, setFontSizeMilestone,
+    fontSizeCalendar, setFontSizeCalendar,
     displayMode,
   } = useUIStore();
 
@@ -33,6 +34,12 @@ export function SettingsPopover() {
         <input type="range" min={5} max={50} value={fontSizeMilestone}
           onChange={(e) => setFontSizeMilestone(Number(e.target.value))} />
         <span>{fontSizeMilestone}px</span>
+      </div>
+      <div className="settings-row">
+        <label>カレンダー</label>
+        <input type="range" min={5} max={50} value={fontSizeCalendar}
+          onChange={(e) => setFontSizeCalendar(Number(e.target.value))} />
+        <span>{fontSizeCalendar}px</span>
       </div>
       {timeline && displayMode === 'fixed' && (
         <>

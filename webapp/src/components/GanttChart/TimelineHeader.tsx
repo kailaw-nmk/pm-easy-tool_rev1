@@ -4,6 +4,7 @@ import { generateMonthRange, parseYearMonth, monthToQuarter, monthAbbr, daysInMo
 import { YEAR_HEADER_Y, QUARTER_HEADER_Y, MONTH_HEADER_Y, YEAR_HEADER_HEIGHT, QUARTER_HEADER_HEIGHT, MONTH_HEADER_HEIGHT } from '../../lib/constants';
 import { getZoomConfig, getDayWidth } from '../../lib/zoom';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useUIStore } from '../../hooks/useUIStore';
 
 interface Props {
   timeline: PageTimeline;
@@ -27,7 +28,9 @@ interface QuarterSpan {
 export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month', fontScale = 1.0 }: Props) {
   const config = getZoomConfig(zoomLevel);
   const tc = useThemeColors();
-  const fs = (base: number) => base * fontScale;
+  const fontSizeCalendar = useUIStore((s) => s.fontSizeCalendar);
+  const calendarScale = fontSizeCalendar / 10;
+  const fs = (base: number) => base * calendarScale * fontScale;
 
   const months = useMemo(
     () => generateMonthRange(timeline.startDate, timeline.endDate),

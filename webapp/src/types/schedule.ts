@@ -120,6 +120,7 @@ export interface DisplaySettings {
   fontSizeLaneTitle: number;
   fontSizeBarText: number;
   fontSizeMilestone: number;
+  fontSizeCalendar: number;
   zoomLevel: ZoomLevel;
   displayMode: DisplayMode;
   showTooltips: boolean;

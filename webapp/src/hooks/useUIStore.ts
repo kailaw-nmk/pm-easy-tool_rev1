@@ -10,6 +10,7 @@ function extractSettings(state: UIState): DisplaySettings {
     fontSizeLaneTitle: state.fontSizeLaneTitle,
     fontSizeBarText: state.fontSizeBarText,
     fontSizeMilestone: state.fontSizeMilestone,
+    fontSizeCalendar: state.fontSizeCalendar,
     zoomLevel: state.zoomLevel,
     displayMode: state.displayMode,
     showTooltips: state.showTooltips,
@@ -42,6 +43,7 @@ interface UIState {
   fontSizeLaneTitle: number;
   fontSizeBarText: number;
   fontSizeMilestone: number;
+  fontSizeCalendar: number;
   displayMode: DisplayMode;
   containerWidth: number;
   containerHeight: number;
@@ -55,6 +57,7 @@ interface UIState {
   setFontSizeLaneTitle: (size: number) => void;
   setFontSizeBarText: (size: number) => void;
   setFontSizeMilestone: (size: number) => void;
+  setFontSizeCalendar: (size: number) => void;
   setDisplayMode: (mode: DisplayMode) => void;
   setContainerWidth: (width: number) => void;
   setContainerHeight: (height: number) => void;
@@ -74,6 +77,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   fontSizeLaneTitle: 8,
   fontSizeBarText: 7,
   fontSizeMilestone: 7,
+  fontSizeCalendar: 10,
   displayMode: 'fixed',
   containerWidth: 0,
   containerHeight: 0,
@@ -108,6 +112,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ fontSizeMilestone: size });
     scheduleSettingsSave(get);
   },
+  setFontSizeCalendar: (size) => {
+    set({ fontSizeCalendar: size });
+    scheduleSettingsSave(get);
+  },
   setDisplayMode: (mode) => {
     set({ displayMode: mode });
     scheduleSettingsSave(get);
@@ -136,6 +144,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       fontSizeLaneTitle: settings.fontSizeLaneTitle ?? 8,
       fontSizeBarText: settings.fontSizeBarText ?? 7,
       fontSizeMilestone: settings.fontSizeMilestone ?? 7,
+      fontSizeCalendar: settings.fontSizeCalendar ?? 10,
       zoomLevel: settings.zoomLevel ?? 'month',
       displayMode: settings.displayMode ?? 'fixed',
       showTooltips: settings.showTooltips ?? true,
