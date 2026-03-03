@@ -125,7 +125,7 @@ export function PageTabs() {
           <button onClick={handleMoveLeft} disabled={!canMoveLeft}>左に移動</button>
           <button onClick={handleMoveRight} disabled={!canMoveRight}>右に移動</button>
           <button onClick={handleRename}>名前変更</button>
-          <button onClick={() => { setManageLanesPageId(contextMenu.pageId); setContextMenu(null); }}>レーン管理...</button>
+          <button onClick={() => { setCurrentPage(contextMenu.pageId); setManageLanesPageId(contextMenu.pageId); setContextMenu(null); }}>レーン管理...</button>
           <button
             className="danger"
             onClick={handleDelete}
