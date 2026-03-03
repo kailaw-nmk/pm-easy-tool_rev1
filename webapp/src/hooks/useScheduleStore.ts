@@ -96,6 +96,58 @@ function scheduleAutoSave(saveData: () => Promise<void>) {
   }, AUTO_SAVE_DELAY_MS);
 }
 
+/**
+ * Sync bars/milestones from a source lane to all sibling lanes (same registryId)
+ * on other pages. Connections/scheduleLines referencing removed items are cascade-deleted.
+ */
+function syncLaneContentToSiblings(
+  draft: ScheduleData,
+  sourcePageId: string,
+  sourceLaneId: string
+): void {
+  const sourcePage = draft.pages.find((p) => p.id === sourcePageId);
+  if (!sourcePage) return;
+  const sourceLane = sourcePage.swimLanes.find((l) => l.id === sourceLaneId);
+  if (!sourceLane?.registryId) return;
+
+  const registryId = sourceLane.registryId;
+  const sourceBarIds = new Set(sourceLane.bars.map((b) => b.id));
+  const sourceMsIds = new Set(sourceLane.milestones.map((m) => m.id));
+
+  for (const page of draft.pages) {
+    if (page.id === sourcePageId) continue;
+    const siblingLane = page.swimLanes.find((l) => l.registryId === registryId);
+    if (!siblingLane) continue;
+
+    // Detect items that will be removed from the sibling
+    const removedIds = new Set<string>();
+    for (const bar of siblingLane.bars) {
+      if (!sourceBarIds.has(bar.id)) removedIds.add(bar.id);
+    }
+    for (const ms of siblingLane.milestones) {
+      if (!sourceMsIds.has(ms.id)) removedIds.add(ms.id);
+    }
+
+    // Deep copy bars/milestones from source
+    siblingLane.bars = JSON.parse(JSON.stringify(sourceLane.bars));
+    siblingLane.milestones = JSON.parse(JSON.stringify(sourceLane.milestones));
+
+    // Cascade delete connections/scheduleLines referencing removed items
+    if (removedIds.size > 0) {
+      if (page.connections) {
+        page.connections = page.connections.filter(
+          (c) => !removedIds.has(c.fromItemId) && !removedIds.has(c.toItemId)
+        );
+      }
+      if (page.scheduleLines) {
+        page.scheduleLines = page.scheduleLines.filter(
+          (sl) => !removedIds.has(sl.sourceItemId)
+        );
+      }
+    }
+  }
+}
+
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   data: null,
   currentPageId: 'p0',
@@ -163,6 +215,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const bar = lane.bars.find((b) => b.id === barId);
         if (!bar) return;
         Object.assign(bar, updates);
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -179,6 +232,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const lane = page.swimLanes.find((l) => l.id === laneId);
         if (!lane) return;
         lane.bars.push(bar);
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -200,6 +254,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             (c) => c.fromItemId !== barId && c.toItemId !== barId
           );
         }
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -235,6 +290,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const ms = lane.milestones.find((m) => m.id === msId);
         if (!ms) return;
         Object.assign(ms, updates);
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -251,6 +307,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const lane = page.swimLanes.find((l) => l.id === laneId);
         if (!lane) return;
         lane.milestones.push(ms);
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -277,6 +334,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             (sl) => sl.sourceItemId !== msId
           );
         }
+        syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -348,12 +406,24 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         if (draftTmpl && !draftTmpl.tags.includes(draftPage.name)) {
           draftTmpl.tags.push(draftPage.name);
         }
+        // Seed bars/milestones from existing sibling lane with same template
+        let seedBars: ScheduleBar[] = [];
+        let seedMilestones: Milestone[] = [];
+        for (const otherPage of draft.pages) {
+          if (otherPage.id === pageId) continue;
+          const sibling = otherPage.swimLanes.find((l) => l.registryId === templateId);
+          if (sibling && (sibling.bars.length > 0 || sibling.milestones.length > 0)) {
+            seedBars = JSON.parse(JSON.stringify(sibling.bars));
+            seedMilestones = JSON.parse(JSON.stringify(sibling.milestones));
+            break;
+          }
+        }
         draftPage.swimLanes.push({
           id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           label: tmpl.label,
           heightPx: tmpl.defaultHeightPx,
-          bars: [],
-          milestones: [],
+          bars: seedBars,
+          milestones: seedMilestones,
           tags: draftTmpl ? [...draftTmpl.tags] : [],
           registryId: tmpl.id,
         });
@@ -564,12 +634,23 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           if (!tmpl.tags.includes(name)) {
             tmpl.tags.push(name);
           }
+          // Seed bars/milestones from existing sibling lane with same template
+          let seedBars: ScheduleBar[] = [];
+          let seedMilestones: Milestone[] = [];
+          for (const otherPage of draft.pages) {
+            const sibling = otherPage.swimLanes.find((l) => l.registryId === tmpl.id);
+            if (sibling && (sibling.bars.length > 0 || sibling.milestones.length > 0)) {
+              seedBars = JSON.parse(JSON.stringify(sibling.bars));
+              seedMilestones = JSON.parse(JSON.stringify(sibling.milestones));
+              break;
+            }
+          }
           return {
             id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             label: tmpl.label,
             heightPx: tmpl.defaultHeightPx,
-            bars: [],
-            milestones: [],
+            bars: seedBars,
+            milestones: seedMilestones,
             tags: [...tmpl.tags],
             registryId: tmpl.id,
           };
