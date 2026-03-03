@@ -507,6 +507,16 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const tmpl = draft.laneRegistry?.find((t) => t.id === templateId);
         if (!tmpl) return;
         Object.assign(tmpl, updates);
+        // Sync label/height to all swim lanes referencing this template
+        if (updates.label !== undefined || updates.defaultHeightPx !== undefined) {
+          for (const page of draft.pages) {
+            for (const lane of page.swimLanes) {
+              if (lane.registryId !== templateId) continue;
+              if (updates.label !== undefined) lane.label = updates.label;
+              if (updates.defaultHeightPx !== undefined) lane.heightPx = updates.defaultHeightPx;
+            }
+          }
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
