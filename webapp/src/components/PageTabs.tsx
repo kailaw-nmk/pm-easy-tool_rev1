@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { AddScheduleDialog } from './AddScheduleDialog';
+import { Plus } from 'lucide-react';
 
 interface TabContextMenu {
   x: number;
@@ -213,7 +214,7 @@ export function PageTabs() {
           onClick={() => setShowAddDialog(true)}
           title="新規スケジュール追加"
         >
-          +
+          <Plus size={14} />
         </button>
       </div>
 

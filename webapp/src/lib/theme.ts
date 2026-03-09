@@ -56,11 +56,11 @@ export interface ThemeColors {
 }
 
 export const lightTheme: ThemeColors = {
-  bg: '#fafafa',
+  bg: '#fafbfc',
   surface: '#ffffff',
-  surfaceSecondary: '#f4f4f5',
-  surfaceHover: '#f0f0f0',
-  border: '#e4e4e7',
+  surfaceSecondary: '#f6f8fa',
+  surfaceHover: '#f1f3f5',
+  border: '#e1e4e8',
   borderLight: '#f0f0f0',
   textPrimary: '#18181b',
   textSecondary: '#71717a',
@@ -99,7 +99,7 @@ export const lightTheme: ThemeColors = {
   tagChipText: '#3b82f6',
   tagChipRemoveHover: '#ef4444',
   toggleActiveBg: '#eff6ff',
-  toggleActiveBorder: '#3b82f6',
+  toggleActiveBorder: '#93bbfc',
   toggleActiveText: '#3b82f6',
   segmentActiveBg: '#3b82f6',
   segmentActiveText: '#ffffff',
@@ -107,12 +107,12 @@ export const lightTheme: ThemeColors = {
 };
 
 export const darkTheme: ThemeColors = {
-  bg: '#09090b',
-  surface: '#18181b',
-  surfaceSecondary: '#27272a',
-  surfaceHover: '#3f3f46',
-  border: '#3f3f46',
-  borderLight: '#27272a',
+  bg: '#0d1117',
+  surface: '#161b22',
+  surfaceSecondary: '#21262d',
+  surfaceHover: '#30363d',
+  border: '#30363d',
+  borderLight: '#21262d',
   textPrimary: '#fafafa',
   textSecondary: '#a1a1aa',
   textMuted: '#71717a',
@@ -150,7 +150,7 @@ export const darkTheme: ThemeColors = {
   tagChipText: '#60a5fa',
   tagChipRemoveHover: '#f87171',
   toggleActiveBg: '#1e3a5f',
-  toggleActiveBorder: '#60a5fa',
+  toggleActiveBorder: '#3d6fad',
   toggleActiveText: '#60a5fa',
   segmentActiveBg: '#60a5fa',
   segmentActiveText: '#09090b',

@@ -11,6 +11,13 @@ import { ImportConflictDialog } from './ImportConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
 import { exportToPng, exportToPdf } from '../lib/client-export';
+import {
+  Home, Save, Undo2, Redo2, Plus, ChevronDown, Link2,
+  MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
+  Settings, HelpCircle, Moon, Sun, MoreHorizontal,
+  RectangleHorizontal, Star, Rows3, LayoutList,
+  Upload, Download, Image, FileText,
+} from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution } from '../types/schedule';
 
 export function Toolbar() {
@@ -131,46 +138,46 @@ export function Toolbar() {
     <>
       <div className="toolbar">
         {/* Home */}
-        <button onClick={() => setShowHome(true)} title="トップページ">
-          {'\u{1F3E0}'}
+        <button className="icon-btn" onClick={() => setShowHome(true)} title="トップページ">
+          <Home size={16} />
         </button>
 
         <div className="separator" />
 
         {/* Save */}
-        <button onClick={() => saveData()} disabled={!isDirty || isSaving} title={isSaving ? 'Saving...' : 'Save'}>
-          {isSaving ? '...' : '\u{1F4BE}'}
+        <button className="icon-btn" onClick={() => saveData()} disabled={!isDirty || isSaving} title={isSaving ? 'Saving...' : 'Save'}>
+          {isSaving ? '...' : <Save size={16} />}
         </button>
 
         {/* Undo / Redo */}
-        <button onClick={undo} disabled={!canUndo()} title="Undo">{'\u21A9'}</button>
-        <button onClick={redo} disabled={!canRedo()} title="Redo">{'\u21AA'}</button>
+        <button className="icon-btn" onClick={undo} disabled={!canUndo()} title="Undo"><Undo2 size={16} /></button>
+        <button className="icon-btn" onClick={redo} disabled={!canRedo()} title="Redo"><Redo2 size={16} /></button>
 
         <div className="separator" />
 
         {/* Add dropdown: +Bar, +Milestone, +Lane, Lanes */}
         <ToolbarDropdown
-          trigger={<>+ {'\u25BC'}</>}
+          trigger={<><Plus size={16} /> <ChevronDown size={12} /></>}
           items={[
-            { label: 'Bar', onClick: () => setAddPanel('bar') },
-            { label: 'Milestone', onClick: () => setAddPanel('milestone') },
-            { label: 'Lane', onClick: handleAddLane },
-            { label: '\u30EC\u30FC\u30F3\u7BA1\u7406', onClick: () => setShowLaneRegistry(true) },
+            { label: 'Bar', icon: <RectangleHorizontal size={14} />, onClick: () => setAddPanel('bar') },
+            { label: 'Milestone', icon: <Star size={14} />, onClick: () => setAddPanel('milestone') },
+            { label: 'Lane', icon: <Rows3 size={14} />, onClick: handleAddLane },
+            { label: 'レーン管理', icon: <LayoutList size={14} />, onClick: () => setShowLaneRegistry(true) },
           ]}
         />
 
         {/* Connect mode toggle */}
         <button
-          className={placementMode === 'connect' ? 'toggle-active' : ''}
+          className={`icon-btn ${placementMode === 'connect' ? 'toggle-active' : ''}`}
           onClick={() => togglePlacementMode('connect')}
-          title="\u63A5\u7D9A\u30E2\u30FC\u30C9"
+          title="接続モード"
         >
-          {'\u{1F517}'}
+          <Link2 size={16} />
         </button>
 
         {/* Placement dropdown: Bar / Milestone */}
         <ToolbarDropdown
-          trigger={<>{'\u914D\u7F6E'} {'\u25BC'}</>}
+          trigger={<><MousePointerClick size={16} /> <ChevronDown size={12} /></>}
           items={[
             {
               label: 'Bar',
@@ -189,10 +196,10 @@ export function Toolbar() {
 
         {/* Tooltip / Memo toggles (compact) */}
         <button className={showTooltips ? 'toggle-active' : ''} onClick={toggleTooltips} title="Tooltip ON/OFF">
-          Tip
+          <MessageSquare size={16} /> Tip
         </button>
         <button className={showMemos ? 'toggle-active' : ''} onClick={toggleMemos} title="Memo ON/OFF">
-          Memo
+          <StickyNote size={16} /> Memo
         </button>
 
         <div className="separator" />
@@ -226,8 +233,8 @@ export function Toolbar() {
         </div>
 
         {/* Today */}
-        <button onClick={handleScrollToToday} title="\u4ECA\u65E5\u306E\u4F4D\u7F6E\u306B\u30B9\u30AF\u30ED\u30FC\u30EB">
-          {'\u{1F4CD}'}
+        <button className="icon-btn" onClick={handleScrollToToday} title="今日の位置にスクロール">
+          <CalendarCheck size={16} />
         </button>
 
         <div className="separator" />
@@ -235,39 +242,39 @@ export function Toolbar() {
         {/* Settings */}
         <div style={{ position: 'relative' }}>
           <button
-            className={showSettings ? 'toggle-active' : ''}
+            className={`icon-btn ${showSettings ? 'toggle-active' : ''}`}
             onClick={() => setShowSettings(!showSettings)}
-            title="\u30D5\u30A9\u30F3\u30C8\u30B5\u30A4\u30BA\u8A2D\u5B9A"
+            title="フォントサイズ設定"
           >
-            {'\u2699'}
+            <Settings size={16} />
           </button>
           {showSettings && <SettingsPopover />}
         </div>
 
         {/* Help */}
-        <button onClick={() => setShowHelp(true)} title="使い方マニュアル">
-          ?
+        <button className="icon-btn" onClick={() => setShowHelp(true)} title="使い方マニュアル">
+          <HelpCircle size={16} />
         </button>
 
         {/* Theme toggle */}
         <button
-          className="theme-toggle"
+          className="theme-toggle icon-btn"
           onClick={toggleTheme}
-          title={themeMode === 'light' ? '\u30C0\u30FC\u30AF\u30E2\u30FC\u30C9\u306B\u5207\u66FF' : '\u30E9\u30A4\u30C8\u30E2\u30FC\u30C9\u306B\u5207\u66FF'}
+          title={themeMode === 'light' ? 'ダークモードに切替' : 'ライトモードに切替'}
         >
-          {themeMode === 'light' ? '\u{1F319}' : '\u2600\uFE0F'}
+          {themeMode === 'light' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
 
         <div className="separator" />
 
         {/* File operations dropdown */}
         <ToolbarDropdown
-          trigger={<>{'\u22EF'} {'\u25BC'}</>}
+          trigger={<><MoreHorizontal size={16} /> <ChevronDown size={12} /></>}
           items={[
-            { label: '\u30A4\u30F3\u30DD\u30FC\u30C8', onClick: () => fileInputRef.current?.click() },
-            { label: '\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8', onClick: () => setShowExportDialog(true) },
-            { label: 'PNG', onClick: () => handleExport('png') },
-            { label: 'PDF', onClick: () => handleExport('pdf') },
+            { label: 'インポート', icon: <Upload size={14} />, onClick: () => fileInputRef.current?.click() },
+            { label: 'エクスポート', icon: <Download size={14} />, onClick: () => setShowExportDialog(true) },
+            { label: 'PNG', icon: <Image size={14} />, onClick: () => handleExport('png') },
+            { label: 'PDF', icon: <FileText size={14} />, onClick: () => handleExport('pdf') },
           ]}
         />
         <input

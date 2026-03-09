@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useUIStore } from '../hooks/useUIStore';
+import { BarChart3, Upload, FilePlus, BookOpen, ArrowLeft } from 'lucide-react';
 import type { ScheduleData } from '../types/schedule';
 
 function createDefaultData(): ScheduleData {
@@ -104,23 +105,26 @@ export function EmptyState({ hasData, onBack }: Props) {
   return (
     <div className="empty-state">
       <div className="empty-state-content">
+        <div className="empty-state-icon">
+          <BarChart3 size={48} />
+        </div>
         <h2>Schedule Manager</h2>
         <p>ガントチャートのJSONファイルをインポートするか、新規プロジェクトを作成してください。</p>
         <p className="empty-state-hint">データはブラウザのlocalStorageに保存されます。</p>
         <div className="empty-state-actions">
           {hasData && onBack && (
             <button className="primary" onClick={onBack}>
-              スケジュールに戻る
+              <ArrowLeft size={16} /> スケジュールに戻る
             </button>
           )}
           <button className={hasData ? '' : 'primary'} onClick={() => fileInputRef.current?.click()}>
-            JSONファイルをインポート
+            <Upload size={16} /> JSONファイルをインポート
           </button>
           <button onClick={handleNew}>
-            新規プロジェクトを作成
+            <FilePlus size={16} /> 新規プロジェクトを作成
           </button>
           <button onClick={handleLoadSample} disabled={loadingSample}>
-            {loadingSample ? '読込中...' : 'サンプルを読み込む'}
+            <BookOpen size={16} /> {loadingSample ? '読込中...' : 'サンプルを読み込む'}
           </button>
         </div>
         <input

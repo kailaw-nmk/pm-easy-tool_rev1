@@ -5,6 +5,7 @@ interface DropdownItem {
   onClick: () => void;
   disabled?: boolean;
   active?: boolean;
+  icon?: React.ReactNode;
 }
 
 interface Props {
@@ -51,6 +52,7 @@ export function ToolbarDropdown({ trigger, items, className, activeClassName }: 
                 close();
               }}
             >
+              {item.icon && <span className="dropdown-item-icon">{item.icon}</span>}
               {item.label}
             </button>
           ))}
