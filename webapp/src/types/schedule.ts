@@ -1,12 +1,4 @@
-export type BarColor =
-  | 'blue'
-  | 'pink'
-  | 'green'
-  | 'orange'
-  | 'gray'
-  | 'purple'
-  | 'red'
-  | 'security';
+export type BarColor = string;
 
 export type ZoomLevel = 'day' | 'month' | 'quarter' | 'year';
 
@@ -53,6 +45,7 @@ export interface Milestone {
   starXOffset?: number;  // star icon X offset from dateX (independent of text)
   starYOffset?: number;  // star icon Y offset from laneY (independent of text)
   starSize?: number;     // star icon font size
+  color?: string;        // custom color (hex or legacy name)
   tooltip?: string;
   memo?: string;
   tooltipDisplay?: DisplayBox;

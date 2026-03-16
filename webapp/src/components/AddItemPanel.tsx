@@ -1,22 +1,14 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
-import { getColorMap } from '../lib/color-map';
-import { useUIStore } from '../hooks/useUIStore';
-import { useThemeColors } from '../hooks/useThemeColors';
-import type { BarColor } from '../types/schedule';
+import { ColorPicker } from './ColorPicker';
 
 interface Props {
   type: 'bar' | 'milestone';
   onClose: () => void;
 }
 
-const BAR_COLORS: BarColor[] = ['blue', 'pink', 'green', 'orange', 'gray', 'purple', 'red', 'security'];
-
 export function AddItemPanel({ type, onClose }: Props) {
   const { data, currentPageId, addBar, addMilestone } = useScheduleStore();
-  const themeMode = useUIStore((s) => s.themeMode);
-  const tc = useThemeColors();
-  const colorMap = getColorMap(themeMode);
   const page = data?.pages.find((p) => p.id === currentPageId);
   const timeline = page?.timeline ?? data?.timeline;
   const lanes = page?.swimLanes ?? [];
@@ -31,7 +23,7 @@ export function AddItemPanel({ type, onClose }: Props) {
     return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
   });
   const [date, setDate] = useState(timeline?.startDate ?? '2026-01');
-  const [color, setColor] = useState<BarColor>('blue');
+  const [color, setColor] = useState('blue');
 
   if (!page || !timeline) return null;
 
@@ -53,6 +45,7 @@ export function AddItemPanel({ type, onClose }: Props) {
         label,
         date,
         yOffsetInLane: 10,
+        color: color !== 'blue' ? color : undefined,
       });
     }
     onClose();
@@ -87,23 +80,6 @@ export function AddItemPanel({ type, onClose }: Props) {
               <label>終了日</label>
               <input type="month" value={endMonth} onChange={(e) => setEndMonth(e.target.value)} />
             </div>
-            <div className="field">
-              <label>カラー</label>
-              <div className="color-picker">
-                {BAR_COLORS.map((c) => (
-                  <div
-                    key={c}
-                    className={`color-swatch ${c === color ? 'selected' : ''}`}
-                    style={{
-                      background: colorMap[c].fill,
-                      borderColor: c === color ? tc.accent : 'transparent',
-                    }}
-                    onClick={() => setColor(c)}
-                    title={c}
-                  />
-                ))}
-              </div>
-            </div>
           </>
         ) : (
           <div className="field">
@@ -111,6 +87,8 @@ export function AddItemPanel({ type, onClose }: Props) {
             <input type="month" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         )}
+
+        <ColorPicker label="カラー" value={color} onChange={setColor} />
 
         <div className="actions">
           <button onClick={onClose}>キャンセル</button>

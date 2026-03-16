@@ -4,6 +4,7 @@ import { itemX, type PositionContext } from '../../lib/position';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { resolveBarColor } from '../../lib/color-map';
 import { measureMilestoneText } from '../../lib/measureText';
 
 interface Props {
@@ -41,8 +42,14 @@ export function MilestoneComponent({
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
   const baseFontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
   const fontSizeMilestone = baseFontSizeMilestone * fontScale;
+  const themeMode = useUIStore((s) => s.themeMode);
   const tc = useThemeColors();
   const posCtx: PositionContext = { timeline, headerWidth, zoomLevel };
+
+  // Resolve milestone color: custom color or theme default
+  const msColor = milestone.color
+    ? resolveBarColor(milestone.color, themeMode).fill
+    : tc.milestoneText;
 
   // --- Drag/resize refs ---
   const textDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean } | null>(null);
@@ -320,7 +327,7 @@ export function MilestoneComponent({
                 dominantBaseline="central"
                 fontSize={fontSizeMilestone}
                 fontWeight="bold"
-                fill={tc.milestoneText}
+                fill={msColor}
                 style={{ userSelect: 'none' }}
               >
                 {line}
@@ -374,7 +381,7 @@ export function MilestoneComponent({
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={starSizeCurrent}
-            fill={tc.milestoneText}
+            fill={msColor}
             pointerEvents="none"
             style={{ userSelect: 'none' }}
           >★</text>

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
-import { getColorMap } from '../lib/color-map';
-import { useUIStore } from '../hooks/useUIStore';
 import { useThemeColors } from '../hooks/useThemeColors';
-import type { BarColor } from '../types/schedule';
+import { ColorPicker } from './ColorPicker';
 
 interface Props {
   pageId: string;
@@ -12,13 +10,9 @@ interface Props {
   onClose: () => void;
 }
 
-const BAR_COLORS: BarColor[] = ['blue', 'pink', 'green', 'orange', 'gray', 'purple', 'red', 'security'];
-
 export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
   const { data, updateBar, deleteBar } = useScheduleStore();
-  const themeMode = useUIStore((s) => s.themeMode);
   const tc = useThemeColors();
-  const colorMap = getColorMap(themeMode);
 
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
@@ -27,7 +21,7 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
   const [label, setLabel] = useState(bar?.label ?? '');
   const [startMonth, setStartMonth] = useState((bar?.startMonth ?? '').substring(0, 7));
   const [endMonth, setEndMonth] = useState((bar?.endMonth ?? '').substring(0, 7));
-  const [color, setColor] = useState<BarColor>(bar?.color ?? 'blue');
+  const [color, setColor] = useState(bar?.color ?? 'blue');
   const [tooltip, setTooltip] = useState(bar?.tooltip ?? '');
   const [memo, setMemo] = useState(bar?.memo ?? '');
 
@@ -63,23 +57,7 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
           <label>End Month (YYYY-MM)</label>
           <input type="month" value={endMonth} onChange={(e) => setEndMonth(e.target.value)} />
         </div>
-        <div className="field">
-          <label>Color</label>
-          <div className="color-picker">
-            {BAR_COLORS.map((c) => (
-              <div
-                key={c}
-                className={`color-swatch ${c === color ? 'selected' : ''}`}
-                style={{
-                  background: colorMap[c].fill,
-                  borderColor: c === color ? tc.accent : 'transparent',
-                }}
-                onClick={() => setColor(c)}
-                title={c}
-              />
-            ))}
-          </div>
-        </div>
+        <ColorPicker label="Color" value={color} onChange={setColor} />
         <div className="field">
           <label>Tooltip</label>
           <input value={tooltip} onChange={(e) => setTooltip(e.target.value)} placeholder="ホバー時に表示するテキスト" />

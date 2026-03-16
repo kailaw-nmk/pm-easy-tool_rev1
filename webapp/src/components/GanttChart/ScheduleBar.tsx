@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState } from 'react';
 import type { ScheduleBar, PageTimeline, ZoomLevel } from '../../types/schedule';
-import { getColorMap } from '../../lib/color-map';
+import { resolveBarColor } from '../../lib/color-map';
 import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay } from '../../lib/date-utils';
 import { itemX, itemWidth, xToDate, type PositionContext } from '../../lib/position';
 import { BAR_BORDER_RADIUS, MIN_BAR_HEIGHT } from '../../lib/constants';
@@ -59,8 +59,7 @@ export function ScheduleBarComponent({
 
   const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0, dw: 0, dh: 0 });
 
-  const colorMap = getColorMap(themeMode);
-  const colors = colorMap[bar.color];
+  const colors = resolveBarColor(bar.color, themeMode);
   const baseX = itemX(bar.startMonth, posCtx);
   const baseWidth = itemWidth(bar.startMonth, bar.endMonth, posCtx);
   const baseY = laneY + bar.yOffsetInLane;

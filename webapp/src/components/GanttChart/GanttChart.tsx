@@ -39,7 +39,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -861,18 +861,32 @@ export function GanttChart() {
                   const selectedBars = selected.filter((s) => s.type === 'bar');
                   if (selectedBars.length >= 2 && selectedBars.some((s) => s.id === contextMenu.id)) {
                     return (
-                      <button onClick={() => {
-                        const input = prompt(`選択中の${selectedBars.length}本のバーの高さ (px):`, '22');
-                        if (input !== null) {
-                          const val = parseInt(input, 10);
-                          if (!isNaN(val) && val >= 8) {
-                            for (const item of selectedBars) {
-                              updateBar(currentPageId, item.laneId, item.id, { heightPx: val });
+                      <>
+                        <button onClick={() => {
+                          const input = prompt(`選択中の${selectedBars.length}本のバーの高さ (px):`, '22');
+                          if (input !== null) {
+                            const val = parseInt(input, 10);
+                            if (!isNaN(val) && val >= 8) {
+                              for (const item of selectedBars) {
+                                updateBar(currentPageId, item.laneId, item.id, { heightPx: val });
+                              }
                             }
                           }
-                        }
-                        setContextMenu(null);
-                      }}>高さを揃える ({selectedBars.length}本)</button>
+                          setContextMenu(null);
+                        }}>高さを揃える ({selectedBars.length}本)</button>
+                        <button onClick={() => {
+                          const barData = selectedBars.map((item) => {
+                            const lane = page?.swimLanes.find((l) => l.id === item.laneId);
+                            const bar = lane?.bars.find((b) => b.id === item.id);
+                            return { ...item, yOffsetInLane: bar?.yOffsetInLane ?? 0 };
+                          });
+                          const targetY = Math.min(...barData.map((b) => b.yOffsetInLane));
+                          for (const item of selectedBars) {
+                            updateBar(currentPageId, item.laneId, item.id, { yOffsetInLane: targetY });
+                          }
+                          setContextMenu(null);
+                        }}>位置を揃える ({selectedBars.length}本)</button>
+                      </>
                     );
                   }
                   return (
@@ -960,6 +974,14 @@ export function GanttChart() {
             )}
             {contextMenu.type === 'lane' && (
               <>
+                <button onClick={() => {
+                  const lane = page?.swimLanes.find(l => l.id === contextMenu.laneId);
+                  const newLabel = window.prompt('レーン名を入力（改行は\\nで区切り）', lane?.label ?? '');
+                  if (newLabel != null && newLabel !== lane?.label) {
+                    updateLaneLabel(currentPageId, contextMenu.laneId, newLabel);
+                  }
+                  setContextMenu(null);
+                }}>名前変更...</button>
                 <button onClick={handleLaneHeightPrompt}>高さ設定...</button>
                 <button onClick={() => { setEditLaneTags(contextMenu.laneId); setContextMenu(null); }}>タグ編集...</button>
                 <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'up'); setContextMenu(null); }}>上に移動</button>

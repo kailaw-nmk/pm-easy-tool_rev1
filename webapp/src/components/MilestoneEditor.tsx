@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { ColorPicker } from './ColorPicker';
 
 interface Props {
   pageId: string;
@@ -19,6 +20,7 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
 
   const [label, setLabel] = useState(ms?.label ?? '');
   const [date, setDate] = useState(ms?.date ?? '');
+  const [color, setColor] = useState(ms?.color ?? '');
   const [tooltip, setTooltip] = useState(ms?.tooltip ?? '');
   const [memo, setMemo] = useState(ms?.memo ?? '');
 
@@ -27,6 +29,7 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
   const handleSave = () => {
     updateMilestone(pageId, laneId, msId, {
       label, date,
+      color: color || undefined,
       tooltip: tooltip || undefined,
       memo: memo || undefined,
     });
@@ -56,6 +59,7 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
           <label>Date (YYYY-MM)</label>
           <input type="month" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
+        <ColorPicker label="Color" value={color || 'red'} onChange={setColor} />
         <div className="field">
           <label>Tooltip</label>
           <input value={tooltip} onChange={(e) => setTooltip(e.target.value)} placeholder="ホバー時に表示するテキスト" />

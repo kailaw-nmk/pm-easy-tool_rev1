@@ -40,6 +40,8 @@ interface ScheduleState {
   removeLane: (pageId: string, laneId: string) => void;
   reorderLane: (pageId: string, laneId: string, direction: 'up' | 'down') => void;
   moveLane: (pageId: string, laneId: string, newIndex: number) => void;
+  // Lane label
+  updateLaneLabel: (pageId: string, laneId: string, label: string) => void;
   // Tag operations
   updateLaneTags: (pageId: string, laneId: string, tags: string[]) => void;
   // Registry operations
@@ -538,6 +540,27 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         if (idx === clampedIndex) return;
         const [lane] = page.swimLanes.splice(idx, 1);
         page.swimLanes.splice(clampedIndex, 0, lane);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  updateLaneLabel: (pageId, laneId, label) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        const lane = page.swimLanes.find((l) => l.id === laneId);
+        if (!lane) return;
+        lane.label = label;
+        // Sync registry template if linked
+        if (lane.registryId && draft.laneRegistry) {
+          const tmpl = draft.laneRegistry.find((t) => t.id === lane.registryId);
+          if (tmpl) tmpl.label = label;
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
