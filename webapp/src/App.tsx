@@ -8,6 +8,7 @@ import { PageTabs } from './components/PageTabs';
 import { GanttChart } from './components/GanttChart/GanttChart';
 import { setGanttContainer, getGanttContainer } from './lib/gantt-refs';
 import { scrollToToday } from './lib/scroll-utils';
+import { resolveTimeline } from './lib/effective-timeline';
 import { getTheme } from './lib/theme';
 
 export default function App() {
@@ -75,20 +76,45 @@ export default function App() {
     };
   }, []);
 
-  // Scroll to today when zoom level changes
+  // Refs to hold latest values for scroll effect without triggering on data changes
+  const rawTimelineRef = useRef((() => {
+    const p = data?.pages.find((pg) => pg.id === currentPageId);
+    return p?.timeline ?? data?.timeline;
+  })());
+  const headerWidthRef = useRef(data?.timeline.laneHeaderWidthPx ?? 140);
+  const containerWidthRef = useRef(useUIStore.getState().containerWidth);
+  const displayModeRef = useRef(displayMode);
+
   useEffect(() => {
-    const page = data?.pages.find((p) => p.id === currentPageId);
-    const timeline = page?.timeline ?? data?.timeline;
-    const headerWidth = data?.timeline.laneHeaderWidthPx ?? 140;
-    if (!timeline) return;
+    const p = data?.pages.find((pg) => pg.id === currentPageId);
+    rawTimelineRef.current = p?.timeline ?? data?.timeline;
+    headerWidthRef.current = data?.timeline.laneHeaderWidthPx ?? 140;
+  }, [data, currentPageId]);
+
+  useEffect(() => {
+    containerWidthRef.current = useUIStore.getState().containerWidth;
+  });
+
+  useEffect(() => { displayModeRef.current = displayMode; }, [displayMode]);
+
+  // Scroll to today on zoom change or page switch (not on data edits)
+  useEffect(() => {
+    const raw = rawTimelineRef.current;
+    const hw = headerWidthRef.current;
+    if (!raw) return;
+    const resolved = resolveTimeline(raw, {
+      headerWidth: hw,
+      containerWidth: containerWidthRef.current,
+      displayMode: displayModeRef.current,
+      zoomLevel,
+    });
+    if (!resolved) return;
     const timer = setTimeout(() => {
       const container = getGanttContainer();
-      if (container) {
-        scrollToToday(container, timeline, headerWidth, zoomLevel);
-      }
+      if (container) scrollToToday(container, resolved, hw, zoomLevel);
     }, 50);
     return () => clearTimeout(timer);
-  }, [zoomLevel, data, currentPageId]);
+  }, [zoomLevel, currentPageId]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Ignore when typing in inputs

@@ -3,7 +3,7 @@ import type { ZoomLevel, DisplayMode, DisplaySettings, ConnectionAnchor } from '
 import type { ThemeMode } from '../lib/theme';
 import { loadSettingsFromStorage, saveSettingsToStorage } from '../lib/storage';
 
-type PlacementMode = 'none' | 'bar' | 'milestone' | 'connect';
+type PlacementMode = 'none' | 'bar' | 'milestone' | 'connect' | 'textbox';
 
 function extractSettings(state: UIState): DisplaySettings {
   return {

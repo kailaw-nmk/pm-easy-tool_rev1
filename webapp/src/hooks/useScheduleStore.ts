@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine, PartialScheduleExport, ConflictResolution } from '../types/schedule';
+import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine, TextBox, PartialScheduleExport, ConflictResolution } from '../types/schedule';
 import { remapPageIds, mergeLaneRegistry, applyRegistryIdRemap } from '../lib/import-utils';
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
@@ -66,6 +66,10 @@ interface ScheduleState {
   addScheduleLine: (pageId: string, line: ScheduleLine) => void;
   updateScheduleLine: (pageId: string, lineId: string, updates: Partial<ScheduleLine>) => void;
   deleteScheduleLine: (pageId: string, lineId: string) => void;
+  // TextBox operations
+  addTextBox: (pageId: string, textBox: TextBox) => void;
+  updateTextBox: (pageId: string, textBoxId: string, updates: Partial<TextBox>) => void;
+  deleteTextBox: (pageId: string, textBoxId: string) => void;
   // Memo
   updateMemo: (memo: string) => void;
   // Import/Export
@@ -259,6 +263,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             (c) => c.fromItemId !== barId && c.toItemId !== barId
           );
         }
+        // Clear textBox arrows targeting this bar
+        if (page.textBoxes) {
+          for (const tb of page.textBoxes) {
+            if (tb.arrowTargetItemId === barId) {
+              tb.arrowTargetItemId = undefined;
+              tb.arrowTargetLaneId = undefined;
+            }
+          }
+        }
         syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
       });
@@ -338,6 +351,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           page.scheduleLines = page.scheduleLines.filter(
             (sl) => sl.sourceItemId !== msId
           );
+        }
+        // Clear textBox arrows targeting this milestone
+        if (page.textBoxes) {
+          for (const tb of page.textBoxes) {
+            if (tb.arrowTargetItemId === msId) {
+              tb.arrowTargetItemId = undefined;
+              tb.arrowTargetLaneId = undefined;
+            }
+          }
         }
         syncLaneContentToSiblings(draft, pageId, laneId);
         draft.lastModified = new Date().toISOString();
@@ -465,6 +487,19 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           page.scheduleLines = page.scheduleLines.filter(
             (sl) => sl.sourceLaneId !== laneId && !msIds.has(sl.sourceItemId)
           );
+        }
+        // Clear textBox arrows targeting items in this lane
+        if (page.textBoxes) {
+          const allItemIds = new Set([
+            ...(laneObj?.bars.map((b) => b.id) ?? []),
+            ...(laneObj?.milestones.map((m) => m.id) ?? []),
+          ]);
+          for (const tb of page.textBoxes) {
+            if (tb.arrowTargetItemId && allItemIds.has(tb.arrowTargetItemId)) {
+              tb.arrowTargetItemId = undefined;
+              tb.arrowTargetLaneId = undefined;
+            }
+          }
         }
         draft.lastModified = new Date().toISOString();
       });
@@ -903,6 +938,51 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const page = draft.pages.find((p) => p.id === pageId);
         if (!page?.scheduleLines) return;
         page.scheduleLines = page.scheduleLines.filter((l) => l.id !== lineId);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  addTextBox: (pageId, textBox) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        if (!page.textBoxes) page.textBoxes = [];
+        page.textBoxes.push(textBox);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  updateTextBox: (pageId, textBoxId, updates) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.textBoxes) return;
+        const tb = page.textBoxes.find((t) => t.id === textBoxId);
+        if (!tb) return;
+        Object.assign(tb, updates);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  deleteTextBox: (pageId, textBoxId) => {
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page?.textBoxes) return;
+        page.textBoxes = page.textBoxes.filter((t) => t.id !== textBoxId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

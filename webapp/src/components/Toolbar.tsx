@@ -11,13 +11,14 @@ import { ExportPageDialog } from './ExportPageDialog';
 import { ImportConflictDialog } from './ImportConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
+import { resolveTimeline } from '../lib/effective-timeline';
 import { exportToPng, exportToPdf } from '../lib/client-export';
 import {
   Home, Save, Undo2, Redo2, Plus, ChevronDown, Link2,
   MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
   Settings, HelpCircle, Moon, Sun, MoreHorizontal,
   RectangleHorizontal, Star, Rows3, LayoutList,
-  Upload, Download, Image, FileText, NotebookPen,
+  Upload, Download, Image, FileText, NotebookPen, Type,
 } from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution } from '../types/schedule';
 
@@ -44,15 +45,19 @@ export function Toolbar() {
     }
   }, [zoomLevel, displayMode, setDisplayMode]);
 
+  const containerWidth = useUIStore((s) => s.containerWidth);
+
   const handleScrollToToday = useCallback(() => {
     const page = data?.pages.find((p) => p.id === currentPageId);
-    const timeline = page?.timeline ?? data?.timeline;
+    const rawTimeline = page?.timeline ?? data?.timeline;
     const headerWidth = data?.timeline.laneHeaderWidthPx ?? 140;
     const container = getGanttContainer();
-    if (container && timeline) {
-      scrollToToday(container, timeline, headerWidth, zoomLevel);
+    if (!container || !rawTimeline) return;
+    const resolved = resolveTimeline(rawTimeline, { headerWidth, containerWidth, displayMode, zoomLevel });
+    if (resolved) {
+      scrollToToday(container, resolved, headerWidth, zoomLevel);
     }
-  }, [data, currentPageId, zoomLevel]);
+  }, [data, currentPageId, zoomLevel, containerWidth, displayMode]);
 
   const handleExport = async (format: 'png' | 'pdf') => {
     const name = `schedule_${currentPageId}`;
@@ -78,7 +83,7 @@ export function Toolbar() {
     addLane(currentPageId, newLane);
   };
 
-  const togglePlacementMode = (mode: 'bar' | 'milestone' | 'connect') => {
+  const togglePlacementMode = (mode: 'bar' | 'milestone' | 'connect' | 'textbox') => {
     setPlacementMode(placementMode === mode ? 'none' : mode);
   };
 
@@ -190,6 +195,12 @@ export function Toolbar() {
               label: 'Milestone',
               onClick: () => togglePlacementMode('milestone'),
               active: placementMode === 'milestone',
+            },
+            {
+              label: 'TextBox',
+              icon: <Type size={14} />,
+              onClick: () => togglePlacementMode('textbox'),
+              active: placementMode === 'textbox',
             },
           ]}
         />
