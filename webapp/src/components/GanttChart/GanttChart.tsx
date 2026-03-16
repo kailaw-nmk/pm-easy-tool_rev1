@@ -40,7 +40,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -253,10 +253,14 @@ export function GanttChart() {
   }, [contextMenu, selected, currentPageId, addConnection]);
 
   const handleDuplicate = useCallback(() => {
-    if (!contextMenu || contextMenu.type !== 'bar') return;
-    duplicateBar(currentPageId, contextMenu.laneId, contextMenu.id);
+    if (!contextMenu) return;
+    if (contextMenu.type === 'bar') {
+      duplicateBar(currentPageId, contextMenu.laneId, contextMenu.id);
+    } else if (contextMenu.type === 'milestone') {
+      duplicateMilestone(currentPageId, contextMenu.laneId, contextMenu.id);
+    }
     setContextMenu(null);
-  }, [contextMenu, currentPageId, duplicateBar]);
+  }, [contextMenu, currentPageId, duplicateBar, duplicateMilestone]);
 
   const handleLaneHeightPrompt = useCallback(() => {
     if (!contextMenu || contextMenu.type !== 'lane') return;
@@ -964,7 +968,6 @@ export function GanttChart() {
             </div>
             {contextMenu.type === 'bar' && (
               <>
-                <button onClick={handleDuplicate}>Duplicate</button>
                 {(() => {
                   const selectedBars = selected.filter((s) => s.type === 'bar');
                   if (selectedBars.length >= 2 && selectedBars.some((s) => s.id === contextMenu.id)) {
@@ -1017,6 +1020,7 @@ export function GanttChart() {
             )}
             {(contextMenu.type === 'bar' || contextMenu.type === 'milestone') && (
               <>
+                <button onClick={handleDuplicate}>Duplicate</button>
                 <button onClick={() => {
                   if (contextMenu.type === 'bar') {
                     setEditBar({ barId: contextMenu.id, laneId: contextMenu.laneId });

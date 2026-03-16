@@ -32,6 +32,8 @@ interface ScheduleState {
   updateMilestone: (pageId: string, laneId: string, msId: string, updates: Partial<Milestone>) => void;
   addMilestone: (pageId: string, laneId: string, ms: Milestone) => void;
   deleteMilestone: (pageId: string, laneId: string, msId: string) => void;
+  moveMilestoneToLane: (pageId: string, fromLaneId: string, toLaneId: string, msId: string) => void;
+  duplicateMilestone: (pageId: string, laneId: string, msId: string) => void;
   // Timeline operations
   updateTimeline: (updates: { startDate?: string; endDate?: string }) => void;
   // Lane operations
@@ -410,6 +412,71 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       scheduleAutoSave(get().saveData);
       return { ...historyUpdate, data: newData, isDirty: true };
     });
+  },
+
+  moveMilestoneToLane: (pageId, fromLaneId, toLaneId, msId) => {
+    if (fromLaneId === toLaneId) return;
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        const fromLane = page.swimLanes.find((l) => l.id === fromLaneId);
+        const toLane = page.swimLanes.find((l) => l.id === toLaneId);
+        if (!fromLane || !toLane) return;
+        const msIndex = fromLane.milestones.findIndex((m) => m.id === msId);
+        if (msIndex < 0) return;
+        const [ms] = fromLane.milestones.splice(msIndex, 1);
+        toLane.milestones.push(ms);
+        // Update connection laneId references
+        if (page.connections) {
+          for (const conn of page.connections) {
+            if (conn.fromItemId === msId && conn.fromLaneId === fromLaneId) {
+              conn.fromLaneId = toLaneId;
+            }
+            if (conn.toItemId === msId && conn.toLaneId === fromLaneId) {
+              conn.toLaneId = toLaneId;
+            }
+          }
+        }
+        // Update schedule line references
+        if (page.scheduleLines) {
+          for (const sl of page.scheduleLines) {
+            if (sl.sourceItemId === msId && sl.sourceLaneId === fromLaneId) {
+              sl.sourceLaneId = toLaneId;
+            }
+          }
+        }
+        // Update textBox arrow references
+        if (page.textBoxes) {
+          for (const tb of page.textBoxes) {
+            if (tb.arrowTargetItemId === msId && tb.arrowTargetLaneId === fromLaneId) {
+              tb.arrowTargetLaneId = toLaneId;
+            }
+          }
+        }
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  duplicateMilestone: (pageId, laneId, msId) => {
+    const { data } = get();
+    if (!data) return;
+    const page = data.pages.find((p) => p.id === pageId);
+    if (!page) return;
+    const lane = page.swimLanes.find((l) => l.id === laneId);
+    if (!lane) return;
+    const ms = lane.milestones.find((m) => m.id === msId);
+    if (!ms) return;
+    const newMs: Milestone = {
+      ...JSON.parse(JSON.stringify(ms)),
+      id: `ms_${Date.now()}`,
+      yOffsetInLane: ms.yOffsetInLane + 20,
+    };
+    get().addMilestone(pageId, laneId, newMs);
   },
 
   updateLaneHeight: (pageId, laneId, heightPx) => {

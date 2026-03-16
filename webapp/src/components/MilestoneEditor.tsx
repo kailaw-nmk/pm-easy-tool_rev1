@@ -11,18 +11,20 @@ interface Props {
 }
 
 export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) {
-  const { data, updateMilestone, deleteMilestone } = useScheduleStore();
+  const { data, updateMilestone, deleteMilestone, moveMilestoneToLane } = useScheduleStore();
   const tc = useThemeColors();
 
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
   const ms = lane?.milestones.find((m) => m.id === msId);
+  const lanes = page?.swimLanes ?? [];
 
   const [label, setLabel] = useState(ms?.label ?? '');
   const [date, setDate] = useState(ms?.date ?? '');
   const [color, setColor] = useState(ms?.color ?? '');
   const [tooltip, setTooltip] = useState(ms?.tooltip ?? '');
   const [memo, setMemo] = useState(ms?.memo ?? '');
+  const [targetLaneId, setTargetLaneId] = useState(laneId);
 
   if (!ms) return null;
 
@@ -33,6 +35,9 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
       tooltip: tooltip || undefined,
       memo: memo || undefined,
     });
+    if (targetLaneId !== laneId) {
+      moveMilestoneToLane(pageId, laneId, targetLaneId, msId);
+    }
     onClose();
   };
 
@@ -54,6 +59,14 @@ export function MilestoneEditorDialog({ pageId, laneId, msId, onClose }: Props) 
               fontSize: '14px', fontFamily: 'inherit', resize: 'vertical',
               background: tc.inputBg, color: tc.textPrimary,
             }} />
+        </div>
+        <div className="field">
+          <label>レーン</label>
+          <select value={targetLaneId} onChange={(e) => setTargetLaneId(e.target.value)}>
+            {lanes.map((l) => (
+              <option key={l.id} value={l.id}>{l.label.replace(/\n/g, ' ')}</option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label>Date (YYYY-MM)</label>
