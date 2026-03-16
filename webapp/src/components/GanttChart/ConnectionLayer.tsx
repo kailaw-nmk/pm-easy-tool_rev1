@@ -37,39 +37,6 @@ export function ConnectionLayer({
   return (
     <g className="connection-layer">
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="8"
-          markerHeight="6"
-          refX="7"
-          refY="3"
-          orient="auto"
-          markerUnits="userSpaceOnUse"
-        >
-          <polygon points="0 0, 8 3, 0 6" fill={tc.textSecondary} />
-        </marker>
-        <marker
-          id="arrowhead-selected"
-          markerWidth="8"
-          markerHeight="6"
-          refX="7"
-          refY="3"
-          orient="auto"
-          markerUnits="userSpaceOnUse"
-        >
-          <polygon points="0 0, 8 3, 0 6" fill={tc.selectionStroke} />
-        </marker>
-        <marker
-          id="arrowhead-hovered"
-          markerWidth="8"
-          markerHeight="6"
-          refX="7"
-          refY="3"
-          orient="auto"
-          markerUnits="userSpaceOnUse"
-        >
-          <polygon points="0 0, 8 3, 0 6" fill={tc.accent} />
-        </marker>
         <filter id="connection-glow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="3" result="blur" />
           <feMerge>
@@ -90,7 +57,7 @@ export function ConnectionLayer({
             : baseColor;
         const baseWidth = connection.strokeWidth ?? 1.5;
         const strokeWidth = isSelected ? baseWidth + 2 : isHovered ? baseWidth + 0.5 : baseWidth;
-        const markerId = isSelected ? 'arrowhead-selected' : isHovered ? 'arrowhead-hovered' : 'arrowhead';
+        const markerId = `arrowhead-${connection.id}`;
 
         // Always draw a single straight line between the two points
         const pathD = `M ${fromX},${fromY} L ${toX},${toY}`;
@@ -113,6 +80,20 @@ export function ConnectionLayer({
 
         return (
           <g key={connection.id}>
+            {/* Per-connection arrowhead marker matching line color */}
+            <defs>
+              <marker
+                id={markerId}
+                markerWidth="8"
+                markerHeight="6"
+                refX="7"
+                refY="3"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+              >
+                <polygon points="0 0, 8 3, 0 6" fill={color} />
+              </marker>
+            </defs>
             {/* Invisible wide hit area */}
             <path
               d={pathD}
