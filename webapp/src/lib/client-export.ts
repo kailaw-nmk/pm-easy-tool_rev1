@@ -68,18 +68,11 @@ export async function exportToPdf(filename = 'schedule.pdf') {
     });
     const imgData = canvas.toDataURL('image/png');
     const imgRatio = width / height;
-    // A3 landscape for wide charts, A4 landscape otherwise
-    const format = imgRatio > 420 / 297 ? 'a3' : 'a4';
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    let w = pageW;
-    let h = pageW / imgRatio;
-    if (h > pageH) {
-      h = pageH;
-      w = pageH * imgRatio;
-    }
-    pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+    // Custom page size to match content aspect ratio (no whitespace)
+    const pageW = 420; // mm (A3 width as base)
+    const pageH = pageW / imgRatio;
+    const pdf = new jsPDF({ unit: 'mm', format: [pageW, pageH] });
+    pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH);
     pdf.save(filename);
   } finally {
     container.scrollLeft = savedScrollLeft;
