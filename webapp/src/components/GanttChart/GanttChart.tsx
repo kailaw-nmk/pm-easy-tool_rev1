@@ -692,46 +692,6 @@ export function GanttChart() {
             />
           </g>
 
-          {/* TextBox layer */}
-          {page.textBoxes && page.textBoxes.length > 0 && (
-            <g clipPath="url(#content-area-clip)">
-              <TextBoxLayer
-                textBoxes={page.textBoxes}
-                page={page}
-                laneOffsets={laneOffsets}
-                posCtx={{ timeline, headerWidth, zoomLevel }}
-                selectedTextBoxId={selectedTextBoxId}
-                onSelect={(id) => {
-                  clearSelection();
-                  setSelectedConnectionId(null);
-                  setSelectedScheduleLineId(null);
-                  setSelectedTextBoxId(id);
-                }}
-                onDoubleClick={(id) => setEditTextBox(id)}
-                onContextMenu={(e, id) => {
-                  setSelectedTextBoxId(id);
-                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'textbox', id, laneId: '' });
-                }}
-                onUpdate={(id, updates) => updateTextBox(currentPageId, id, updates)}
-              />
-            </g>
-          )}
-
-          {/* TipMemo boxes */}
-          {(showTooltips || showMemos) && (
-            <g clipPath="url(#content-area-clip)">
-              <TipMemoBoxLayer
-                page={{ ...page, swimLanes: effectiveLanes }}
-                laneOffsets={laneOffsets}
-                posCtx={{ timeline, headerWidth, zoomLevel }}
-                showTooltips={showTooltips}
-                showMemos={showMemos}
-                onEditBar={(barId, laneId) => setEditBar({ barId, laneId })}
-                onEditMilestone={(msId, laneId) => setEditMs({ msId, laneId })}
-              />
-            </g>
-          )}
-
           {/* Swim lanes (y starts from 0) */}
           {effectiveLanes.map((lane, i) => {
             const offset = laneOffsets[i];
@@ -761,6 +721,46 @@ export function GanttChart() {
               />
             );
           })}
+
+          {/* TextBox layer (rendered after swim lanes so boxes are clickable) */}
+          {page.textBoxes && page.textBoxes.length > 0 && (
+            <g clipPath="url(#content-area-clip)">
+              <TextBoxLayer
+                textBoxes={page.textBoxes}
+                page={page}
+                laneOffsets={laneOffsets}
+                posCtx={{ timeline, headerWidth, zoomLevel }}
+                selectedTextBoxId={selectedTextBoxId}
+                onSelect={(id) => {
+                  clearSelection();
+                  setSelectedConnectionId(null);
+                  setSelectedScheduleLineId(null);
+                  setSelectedTextBoxId(id);
+                }}
+                onDoubleClick={(id) => setEditTextBox(id)}
+                onContextMenu={(e, id) => {
+                  setSelectedTextBoxId(id);
+                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'textbox', id, laneId: '' });
+                }}
+                onUpdate={(id, updates) => updateTextBox(currentPageId, id, updates)}
+              />
+            </g>
+          )}
+
+          {/* TipMemo boxes (rendered after swim lanes so boxes are clickable) */}
+          {(showTooltips || showMemos) && (
+            <g clipPath="url(#content-area-clip)">
+              <TipMemoBoxLayer
+                page={{ ...page, swimLanes: effectiveLanes }}
+                laneOffsets={laneOffsets}
+                posCtx={{ timeline, headerWidth, zoomLevel }}
+                showTooltips={showTooltips}
+                showMemos={showMemos}
+                onEditBar={(barId, laneId) => setEditBar({ barId, laneId })}
+                onEditMilestone={(msId, laneId) => setEditMs({ msId, laneId })}
+              />
+            </g>
+          )}
 
           {/* Snap point overlay for connect mode */}
           {placementMode === 'connect' && (

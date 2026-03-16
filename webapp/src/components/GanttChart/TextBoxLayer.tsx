@@ -75,21 +75,33 @@ export function TextBoxLayer({
       setDragDelta({ dx: scaleDx, dy: scaleDy });
     };
 
+    let lastDelta = { dx: 0, dy: 0 };
+    const origOnMove = onMove;
+    const trackingMove = (ev: PointerEvent) => {
+      origOnMove(ev);
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      const ctm = svg.getScreenCTM();
+      lastDelta = { dx: ctm ? dx / ctm.a : dx, dy: ctm ? dy / ctm.d : dy };
+    };
+
     const onUp = () => {
       if (dragRef.current) {
         const d = dragRef.current;
-        // Read final delta from state is tricky; compute from pointer
-        // We'll use the last known values
-        setDragDelta((prev) => {
-          if (!prev) return null;
+        const hasMoved = Math.abs(lastDelta.dx) > 2 || Math.abs(lastDelta.dy) > 2;
+        dragRef.current = null;
+        setDragDelta(null);
+
+        if (hasMoved) {
           if (d.mode === 'move') {
             onUpdate(d.id, {
-              x: Math.round(d.origX + prev.dx),
-              y: Math.round(d.origY + prev.dy),
+              x: Math.round(d.origX + lastDelta.dx),
+              y: Math.round(d.origY + lastDelta.dy),
             });
           } else {
-            const newW = Math.max(40, Math.round(d.origW + prev.dx));
-            const newH = Math.max(20, Math.round(d.origH + prev.dy));
+            const newW = Math.max(40, Math.round(d.origW + lastDelta.dx));
+            const newH = Math.max(20, Math.round(d.origH + lastDelta.dy));
             const scaleX = newW / d.origW;
             const scaleY = newH / d.origH;
             const scale = Math.sqrt(scaleX * scaleY);
@@ -100,15 +112,13 @@ export function TextBoxLayer({
               fontSize: newFontSize,
             });
           }
-          return null;
-        });
-        dragRef.current = null;
+        }
       }
-      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointermove', trackingMove);
       window.removeEventListener('pointerup', onUp);
     };
 
-    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointermove', trackingMove);
     window.addEventListener('pointerup', onUp);
   }, [onSelect, onUpdate]);
 

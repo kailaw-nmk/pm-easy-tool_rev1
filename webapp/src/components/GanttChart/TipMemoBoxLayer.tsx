@@ -196,16 +196,30 @@ export function TipMemoBoxLayer({
       setDragDelta({ dx: scaleDx, dy: scaleDy });
     };
 
+    let lastDelta = { dx: 0, dy: 0 };
+    const origOnMove = onMove;
+    const trackingMove = (ev: PointerEvent) => {
+      origOnMove(ev);
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      const ctm = svg.getScreenCTM();
+      lastDelta = { dx: ctm ? dx / ctm.a : dx, dy: ctm ? dy / ctm.d : dy };
+    };
+
     const onUp = () => {
       if (dragRef.current) {
         const d = dragRef.current;
-        setDragDelta((prev) => {
-          if (!prev) return null;
+        const hasMoved = Math.abs(lastDelta.dx) > 2 || Math.abs(lastDelta.dy) > 2;
+        dragRef.current = null;
+        setDragDelta(null);
+
+        if (hasMoved) {
           const displayKey = d.boxType === 'tooltip' ? 'tooltipDisplay' : 'memoDisplay';
           if (d.mode === 'move') {
             const newDisplay: DisplayBox = {
-              dx: Math.round(d.origDx + prev.dx),
-              dy: Math.round(d.origDy + prev.dy),
+              dx: Math.round(d.origDx + lastDelta.dx),
+              dy: Math.round(d.origDy + lastDelta.dy),
               width: d.origW,
               height: d.origH,
               fontSize: d.origFontSize,
@@ -216,8 +230,8 @@ export function TipMemoBoxLayer({
               updateMilestone(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
             }
           } else {
-            const newW = Math.max(40, Math.round(d.origW + prev.dx));
-            const newH = Math.max(20, Math.round(d.origH + prev.dy));
+            const newW = Math.max(40, Math.round(d.origW + lastDelta.dx));
+            const newH = Math.max(20, Math.round(d.origH + lastDelta.dy));
             const scaleX = newW / d.origW;
             const scaleY = newH / d.origH;
             const scale = Math.sqrt(scaleX * scaleY);
@@ -235,15 +249,13 @@ export function TipMemoBoxLayer({
               updateMilestone(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
             }
           }
-          return null;
-        });
-        dragRef.current = null;
+        }
       }
-      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointermove', trackingMove);
       window.removeEventListener('pointerup', onUp);
     };
 
-    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointermove', trackingMove);
     window.addEventListener('pointerup', onUp);
   }, [currentPageId, updateBar, updateMilestone]);
 
