@@ -72,6 +72,7 @@ export function ScheduleBarComponent({
   const renderHeight = Math.max(MIN_BAR_HEIGHT, bar.heightPx + dragOffset.dh);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, type: DragType) => {
+    if (e.button === 2) return; // Skip right-click to preserve multi-selection
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);

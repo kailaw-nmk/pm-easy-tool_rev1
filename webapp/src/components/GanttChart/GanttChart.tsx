@@ -160,8 +160,13 @@ export function GanttChart() {
   const handleContextMenu = useCallback((e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    // If the right-clicked item is not already selected, select it exclusively
+    // If it is already selected (e.g. part of multi-selection), keep current selection
+    if (!selected.some((s) => s.id === id)) {
+      select({ type, id, laneId });
+    }
     setContextMenu({ x: e.clientX, y: e.clientY, type, id, laneId });
-  }, []);
+  }, [selected, select]);
 
   const handleLaneContextMenu = useCallback((e: React.MouseEvent, laneId: string) => {
     e.preventDefault();

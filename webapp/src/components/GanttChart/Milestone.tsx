@@ -108,6 +108,7 @@ export function MilestoneComponent({
 
   // --- Text drag handlers ---
   const handleTextDragDown = useCallback((e: React.PointerEvent) => {
+    if (e.button === 2) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
@@ -121,6 +122,7 @@ export function MilestoneComponent({
 
   // --- Text resize handlers ---
   const handleTextResizeDown = useCallback((e: React.PointerEvent) => {
+    if (e.button === 2) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
@@ -133,6 +135,7 @@ export function MilestoneComponent({
 
   // --- Star drag handlers ---
   const handleStarDragDown = useCallback((e: React.PointerEvent) => {
+    if (e.button === 2) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
@@ -146,6 +149,7 @@ export function MilestoneComponent({
 
   // --- Star resize handlers ---
   const handleStarResizeDown = useCallback((e: React.PointerEvent) => {
+    if (e.button === 2) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as SVGElement).setPointerCapture(e.pointerId);
