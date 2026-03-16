@@ -79,7 +79,7 @@ export function ConnectionLayer({
         </filter>
       </defs>
       {resolvedConnections.map((rc) => {
-        const { connection, fromX, fromY, toX, toY, lineType } = rc;
+        const { connection, fromX, fromY, toX, toY } = rc;
         const isSelected = selectedConnectionId === connection.id;
         const isHovered = hoveredConnectionId === connection.id;
         const baseColor = connection.color ?? tc.textSecondary;
@@ -92,18 +92,11 @@ export function ConnectionLayer({
         const strokeWidth = isSelected ? baseWidth + 2 : isHovered ? baseWidth + 0.5 : baseWidth;
         const markerId = isSelected ? 'arrowhead-selected' : isHovered ? 'arrowhead-hovered' : 'arrowhead';
 
-        let pathD: string;
-        if (lineType === 'straight') {
-          pathD = `M ${fromX},${fromY} L ${toX},${toY}`;
-        } else {
-          const midX = (fromX + toX) / 2;
-          pathD = `M ${fromX},${fromY} H ${midX} V ${toY} H ${toX}`;
-        }
+        // Always draw a single straight line between the two points
+        const pathD = `M ${fromX},${fromY} L ${toX},${toY}`;
 
         const memoX = (fromX + toX) / 2;
-        const memoY = lineType === 'straight'
-          ? (fromY + toY) / 2 - 6
-          : Math.min(fromY, toY) + Math.abs(toY - fromY) / 2 - 6;
+        const memoY = (fromY + toY) / 2 - 6;
 
         // Bubble memo dimensions
         const memoText = connection.memo;
