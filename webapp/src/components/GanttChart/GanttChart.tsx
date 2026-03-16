@@ -657,12 +657,54 @@ export function GanttChart() {
     setLaneDrag({ laneId, startY, currentY: startY, laneHeight, originalIndex: idx });
   }, [effectiveLanes, select]);
 
-  const handlePointerMoveUnified = useCallback((e: React.PointerEvent) => {
-    // Lane drag processing (existing)
-    if (laneDrag) {
+  // Lane drag: use document-level listeners so events aren't blocked by header overlay
+  useEffect(() => {
+    if (!laneDrag) return;
+    const handleMove = (e: PointerEvent) => {
       setLaneDrag((prev) => prev ? { ...prev, currentY: e.clientY } : null);
-      return;
-    }
+    };
+    const handleUp = () => {
+      // Read current laneDrag state, compute target, then clear and move
+      const prev = laneDrag;
+      if (!prev) return;
+      const dy = prev.currentY - prev.startY;
+      let targetIndex = prev.originalIndex;
+      let accHeight = 0;
+      if (dy > 0) {
+        for (let i = prev.originalIndex + 1; i < effectiveLanes.length; i++) {
+          accHeight += effectiveLanes[i].heightPx;
+          if (dy > accHeight - effectiveLanes[i].heightPx / 2) {
+            targetIndex = i;
+          } else {
+            break;
+          }
+        }
+      } else if (dy < 0) {
+        for (let i = prev.originalIndex - 1; i >= 0; i--) {
+          accHeight += effectiveLanes[i].heightPx;
+          if (-dy > accHeight - effectiveLanes[i].heightPx / 2) {
+            targetIndex = i;
+          } else {
+            break;
+          }
+        }
+      }
+      setLaneDrag(null);
+      if (targetIndex !== prev.originalIndex) {
+        moveLane(currentPageId, prev.laneId, targetIndex);
+      }
+    };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [laneDrag, effectiveLanes, currentPageId, moveLane]);
+
+  const handlePointerMoveUnified = useCallback((e: React.PointerEvent) => {
+    // Lane drag is handled by document-level listeners; skip here
+    if (laneDrag) return;
 
     // Pan processing
     if (panRef.current) {
@@ -684,36 +726,8 @@ export function GanttChart() {
   }, [laneDrag]);
 
   const handlePointerUpUnified = useCallback(() => {
-    // Lane drag end (existing)
-    if (laneDrag) {
-      const dy = laneDrag.currentY - laneDrag.startY;
-      let targetIndex = laneDrag.originalIndex;
-      let accHeight = 0;
-      if (dy > 0) {
-        for (let i = laneDrag.originalIndex + 1; i < effectiveLanes.length; i++) {
-          accHeight += effectiveLanes[i].heightPx;
-          if (dy > accHeight - effectiveLanes[i].heightPx / 2) {
-            targetIndex = i;
-          } else {
-            break;
-          }
-        }
-      } else if (dy < 0) {
-        for (let i = laneDrag.originalIndex - 1; i >= 0; i--) {
-          accHeight += effectiveLanes[i].heightPx;
-          if (-dy > accHeight - effectiveLanes[i].heightPx / 2) {
-            targetIndex = i;
-          } else {
-            break;
-          }
-        }
-      }
-      if (targetIndex !== laneDrag.originalIndex) {
-        moveLane(currentPageId, laneDrag.laneId, targetIndex);
-      }
-      setLaneDrag(null);
-      return;
-    }
+    // Lane drag is handled by document-level listeners; skip here
+    if (laneDrag) return;
 
     // Pan end
     if (panRef.current) {
@@ -726,7 +740,7 @@ export function GanttChart() {
       }
       // If panning, leave panRef for handleSvgClick to detect and clear
     }
-  }, [laneDrag, effectiveLanes, currentPageId, moveLane]);
+  }, [laneDrag]);
 
   // ESC key cancels connect mode
   useEffect(() => {
