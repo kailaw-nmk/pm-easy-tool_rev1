@@ -5,6 +5,7 @@ import { remapPageIds, mergeLaneRegistry, applyRegistryIdRemap } from '../lib/im
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
 import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
+import { useUIStore } from './useUIStore';
 
 interface HistoryEntry {
   data: ScheduleData;
@@ -191,7 +192,24 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     if (!data) return;
     set({ isSaving: true });
     try {
-      saveScheduleToStorage(data);
+      const uiState = useUIStore.getState();
+      const dataWithSettings = {
+        ...data,
+        settings: {
+          fontSizeLaneTitle: uiState.fontSizeLaneTitle,
+          fontSizeBarText: uiState.fontSizeBarText,
+          fontSizeMilestone: uiState.fontSizeMilestone,
+          fontSizeCalendar: uiState.fontSizeCalendar,
+          fontSizeTipMemo: uiState.fontSizeTipMemo,
+          fontSizeTextBox: uiState.fontSizeTextBox,
+          zoomLevel: uiState.zoomLevel,
+          displayMode: uiState.displayMode,
+          showTooltips: uiState.showTooltips,
+          showMemos: uiState.showMemos,
+          themeMode: uiState.themeMode,
+        },
+      };
+      saveScheduleToStorage(dataWithSettings);
       set({ isDirty: false, isSaving: false });
     } catch {
       set({ isSaving: false });
@@ -1181,6 +1199,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       history: [{ data: JSON.parse(JSON.stringify(data)) }],
       historyIndex: 0,
     });
+    // Restore UI settings if present
+    if (data.settings) {
+      useUIStore.getState().applySettings(data.settings);
+    }
     // Save to server for session persistence
     get().saveData();
   },
@@ -1193,7 +1215,24 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     const defaultName = `schedule_${yyyy}${mm}${dd}.json`;
-    const json = JSON.stringify(data, null, 2);
+    const uiState = useUIStore.getState();
+    const exportData = {
+      ...data,
+      settings: {
+        fontSizeLaneTitle: uiState.fontSizeLaneTitle,
+        fontSizeBarText: uiState.fontSizeBarText,
+        fontSizeMilestone: uiState.fontSizeMilestone,
+        fontSizeCalendar: uiState.fontSizeCalendar,
+        fontSizeTipMemo: uiState.fontSizeTipMemo,
+        fontSizeTextBox: uiState.fontSizeTextBox,
+        zoomLevel: uiState.zoomLevel,
+        displayMode: uiState.displayMode,
+        showTooltips: uiState.showTooltips,
+        showMemos: uiState.showMemos,
+        themeMode: uiState.themeMode,
+      },
+    };
+    const json = JSON.stringify(exportData, null, 2);
 
     // File System Access API が使える場合: ネイティブ保存ダイアログ
     if ('showSaveFilePicker' in window) {

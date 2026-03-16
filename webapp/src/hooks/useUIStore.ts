@@ -73,6 +73,7 @@ interface UIState {
   clearConnectFrom: () => void;
   setShowHome: (show: boolean) => void;
   loadSettings: () => Promise<void>;
+  applySettings: (settings: DisplaySettings) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -156,6 +157,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   loadSettings: async () => {
     const settings = loadSettingsFromStorage();
     if (!settings) return;
+    get().applySettings(settings);
+  },
+
+  applySettings: (settings: DisplaySettings) => {
     set({
       fontSizeLaneTitle: settings.fontSizeLaneTitle ?? 8,
       fontSizeBarText: settings.fontSizeBarText ?? 7,

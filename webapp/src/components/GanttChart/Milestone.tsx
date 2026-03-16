@@ -52,9 +52,9 @@ export function MilestoneComponent({
     : tc.milestoneText;
 
   // --- Drag/resize refs ---
-  const textDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean } | null>(null);
+  const textDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean; axisLock: 'none' | 'h' | 'v' } | null>(null);
   const textResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-  const starDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean } | null>(null);
+  const starDragRef = useRef<{ startX: number; startY: number; origXOff: number; origYOff: number; hasMoved: boolean; axisLock: 'none' | 'h' | 'v' } | null>(null);
   const starResizeRef = useRef<{ startX: number; startY: number; origSize: number } | null>(null);
 
   // --- Visual offsets during drag/resize ---
@@ -117,6 +117,7 @@ export function MilestoneComponent({
       origXOff: milestone.xOffsetPx ?? 0,
       origYOff: milestone.yOffsetInLane,
       hasMoved: false,
+      axisLock: 'none',
     };
   }, [milestone.xOffsetPx, milestone.yOffsetInLane]);
 
@@ -144,6 +145,7 @@ export function MilestoneComponent({
       origXOff: milestone.starXOffset ?? defaultStarXOff,
       origYOff: milestone.starYOffset ?? defaultStarYOff,
       hasMoved: false,
+      axisLock: 'none',
     };
   }, [milestone.starXOffset, milestone.starYOffset, defaultStarXOff, defaultStarYOff]);
 
@@ -162,12 +164,22 @@ export function MilestoneComponent({
   // --- Common pointer move ---
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (textDragRef.current) {
-      const dx = e.clientX - textDragRef.current.startX;
-      const dy = e.clientY - textDragRef.current.startY;
+      let dx = e.clientX - textDragRef.current.startX;
+      let dy = e.clientY - textDragRef.current.startY;
       if (!textDragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
         textDragRef.current.hasMoved = true;
       }
-      if (textDragRef.current.hasMoved) setTextDragOffset({ dx, dy });
+      if (textDragRef.current.hasMoved) {
+        if (e.shiftKey) {
+          if (textDragRef.current.axisLock === 'none') {
+            textDragRef.current.axisLock = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+          }
+          if (textDragRef.current.axisLock === 'h') dy = 0; else dx = 0;
+        } else {
+          textDragRef.current.axisLock = 'none';
+        }
+        setTextDragOffset({ dx, dy });
+      }
     }
     if (textResizeRef.current) {
       const dw = e.clientX - textResizeRef.current.startX;
@@ -178,12 +190,22 @@ export function MilestoneComponent({
       });
     }
     if (starDragRef.current) {
-      const dx = e.clientX - starDragRef.current.startX;
-      const dy = e.clientY - starDragRef.current.startY;
+      let dx = e.clientX - starDragRef.current.startX;
+      let dy = e.clientY - starDragRef.current.startY;
       if (!starDragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
         starDragRef.current.hasMoved = true;
       }
-      if (starDragRef.current.hasMoved) setStarDragOffset({ dx, dy });
+      if (starDragRef.current.hasMoved) {
+        if (e.shiftKey) {
+          if (starDragRef.current.axisLock === 'none') {
+            starDragRef.current.axisLock = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+          }
+          if (starDragRef.current.axisLock === 'h') dy = 0; else dx = 0;
+        } else {
+          starDragRef.current.axisLock = 'none';
+        }
+        setStarDragOffset({ dx, dy });
+      }
     }
     if (starResizeRef.current) {
       const dx = e.clientX - starResizeRef.current.startX;
@@ -215,8 +237,10 @@ export function MilestoneComponent({
         textDragRef.current = null;
         return;
       }
-      const dx = e.clientX - textDragRef.current.startX;
-      const dy = e.clientY - textDragRef.current.startY;
+      let dx = e.clientX - textDragRef.current.startX;
+      let dy = e.clientY - textDragRef.current.startY;
+      if (textDragRef.current.axisLock === 'h') dy = 0;
+      else if (textDragRef.current.axisLock === 'v') dx = 0;
       const updates: Partial<Milestone> = {
         xOffsetPx: textDragRef.current.origXOff + dx,
         yOffsetInLane: Math.max(0, Math.round(textDragRef.current.origYOff + dy)),
@@ -254,8 +278,10 @@ export function MilestoneComponent({
         starDragRef.current = null;
         return;
       }
-      const dx = e.clientX - starDragRef.current.startX;
-      const dy = e.clientY - starDragRef.current.startY;
+      let dx = e.clientX - starDragRef.current.startX;
+      let dy = e.clientY - starDragRef.current.startY;
+      if (starDragRef.current.axisLock === 'h') dy = 0;
+      else if (starDragRef.current.axisLock === 'v') dx = 0;
       const updates: Partial<Milestone> = {
         starXOffset: starDragRef.current.origXOff + dx,
         starYOffset: starDragRef.current.origYOff + dy,

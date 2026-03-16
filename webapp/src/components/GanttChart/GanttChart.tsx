@@ -40,7 +40,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, updateScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, updateMilestone, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, updateScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -1033,6 +1033,40 @@ export function GanttChart() {
                   <button onClick={handleCreateConnection}>接続を作成</button>
                 )}
                 {contextMenu.type === 'milestone' && (() => {
+                  const selectedMilestones = selected.filter((s) => s.type === 'milestone');
+                  if (selectedMilestones.length >= 2 && selectedMilestones.some((s) => s.id === contextMenu.id)) {
+                    return (
+                      <>
+                        <button onClick={() => {
+                          const input = prompt(`選択中の${selectedMilestones.length}個のマイルストーンの高さ (px):`, '14');
+                          if (input !== null) {
+                            const val = parseInt(input, 10);
+                            if (!isNaN(val) && val >= 4) {
+                              for (const item of selectedMilestones) {
+                                updateMilestone(currentPageId, item.laneId, item.id, { heightPx: val });
+                              }
+                            }
+                          }
+                          setContextMenu(null);
+                        }}>高さを揃える ({selectedMilestones.length}個)</button>
+                        <button onClick={() => {
+                          const msData = selectedMilestones.map((item) => {
+                            const lane = page?.swimLanes.find((l) => l.id === item.laneId);
+                            const ms = lane?.milestones.find((m) => m.id === item.id);
+                            return { ...item, yOffsetInLane: ms?.yOffsetInLane ?? 0 };
+                          });
+                          const targetY = Math.min(...msData.map((m) => m.yOffsetInLane));
+                          for (const item of selectedMilestones) {
+                            updateMilestone(currentPageId, item.laneId, item.id, { yOffsetInLane: targetY });
+                          }
+                          setContextMenu(null);
+                        }}>位置を揃える ({selectedMilestones.length}個)</button>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+                {contextMenu.type === 'milestone' && (() => {
                   const existingLine = page?.scheduleLines?.find(
                     (sl) => sl.sourceItemId === contextMenu.id && sl.sourceLaneId === contextMenu.laneId
                   );
@@ -1072,6 +1106,15 @@ export function GanttChart() {
                   if (color !== null) updateConnection(currentPageId, contextMenu.id, { color: color || undefined });
                   setContextMenu(null);
                 }}>色変更</button>
+                <button onClick={() => {
+                  const conn = page?.connections?.find((c) => c.id === contextMenu.id);
+                  const input = prompt('線の太さ (px):', String(conn?.strokeWidth ?? 1.5));
+                  if (input !== null) {
+                    const val = parseFloat(input);
+                    if (!isNaN(val) && val > 0) updateConnection(currentPageId, contextMenu.id, { strokeWidth: val });
+                  }
+                  setContextMenu(null);
+                }}>線の太さ変更</button>
               </>
             )}
             {contextMenu.type === 'scheduleLine' && (
