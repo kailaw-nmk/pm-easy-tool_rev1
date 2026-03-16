@@ -19,18 +19,16 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
 
   select: (item, multi = false) => {
     set((state) => {
-      // Lane selection is exclusive — clear other types
-      if (item.type === 'lane') {
-        return { selected: [item] };
-      }
-      // Selecting bar/milestone clears any lane selection
-      const filtered = state.selected.filter((s) => s.type !== 'lane');
       if (multi) {
-        const exists = filtered.find((s) => s.id === item.id);
+        // Multi-select: only allow same type (lane with lane, bar/milestone together)
+        const sameTypeFilter = item.type === 'lane'
+          ? state.selected.filter((s) => s.type === 'lane')
+          : state.selected.filter((s) => s.type !== 'lane');
+        const exists = sameTypeFilter.find((s) => s.id === item.id);
         if (exists) {
-          return { selected: filtered.filter((s) => s.id !== item.id) };
+          return { selected: sameTypeFilter.filter((s) => s.id !== item.id) };
         }
-        return { selected: [...filtered, item] };
+        return { selected: [...sameTypeFilter, item] };
       }
       return { selected: [item] };
     });

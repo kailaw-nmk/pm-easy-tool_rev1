@@ -171,8 +171,12 @@ export function GanttChart() {
   const handleLaneContextMenu = useCallback((e: React.MouseEvent, laneId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    // If the right-clicked lane is not already selected, select it exclusively
+    if (!selected.some((s) => s.id === laneId)) {
+      select({ type: 'lane', id: laneId, laneId });
+    }
     setContextMenu({ x: e.clientX, y: e.clientY, type: 'lane', id: laneId, laneId });
-  }, []);
+  }, [selected, select]);
 
   const closeContextMenu = useCallback(() => { setContextMenu(null); setContextMenuPos(null); }, []);
 
@@ -254,16 +258,30 @@ export function GanttChart() {
 
   const handleLaneHeightPrompt = useCallback(() => {
     if (!contextMenu || contextMenu.type !== 'lane') return;
-    const lane = page?.swimLanes.find((l) => l.id === contextMenu.laneId);
-    const input = prompt('レーンの高さ (px):', String(lane?.heightPx ?? 80));
-    if (input !== null) {
-      const val = parseInt(input, 10);
-      if (!isNaN(val) && val >= 40) {
-        updateLaneHeight(currentPageId, contextMenu.laneId, val);
+    const selectedLanes = selected.filter((s) => s.type === 'lane');
+    const isMulti = selectedLanes.length >= 2 && selectedLanes.some((s) => s.id === contextMenu.laneId);
+    if (isMulti) {
+      const input = prompt(`選択中の${selectedLanes.length}レーンの高さ (px):`, '80');
+      if (input !== null) {
+        const val = parseInt(input, 10);
+        if (!isNaN(val) && val >= 40) {
+          for (const item of selectedLanes) {
+            updateLaneHeight(currentPageId, item.id, val);
+          }
+        }
+      }
+    } else {
+      const lane = page?.swimLanes.find((l) => l.id === contextMenu.laneId);
+      const input = prompt('レーンの高さ (px):', String(lane?.heightPx ?? 80));
+      if (input !== null) {
+        const val = parseInt(input, 10);
+        if (!isNaN(val) && val >= 40) {
+          updateLaneHeight(currentPageId, contextMenu.laneId, val);
+        }
       }
     }
     setContextMenu(null);
-  }, [contextMenu, currentPageId, page, updateLaneHeight]);
+  }, [contextMenu, currentPageId, page, selected, updateLaneHeight]);
 
   const handleSvgClick = useCallback((e: React.MouseEvent) => {
     // Skip click processing after a pan drag
@@ -396,7 +414,8 @@ export function GanttChart() {
 
   const handleLaneClick = useCallback((e: React.MouseEvent, laneId: string) => {
     e.stopPropagation();
-    select({ type: 'lane', id: laneId, laneId });
+    const multi = e.ctrlKey || e.metaKey;
+    select({ type: 'lane', id: laneId, laneId }, multi);
   }, [select]);
 
   // Delete key handler for selected items
@@ -987,7 +1006,15 @@ export function GanttChart() {
                   }
                   setContextMenu(null);
                 }}>名前変更...</button>
-                <button onClick={handleLaneHeightPrompt}>高さ設定...</button>
+                {(() => {
+                  const selectedLanes = selected.filter((s) => s.type === 'lane');
+                  const isMulti = selectedLanes.length >= 2 && selectedLanes.some((s) => s.id === contextMenu.laneId);
+                  return (
+                    <button onClick={handleLaneHeightPrompt}>
+                      {isMulti ? `高さを揃える (${selectedLanes.length}レーン)` : '高さ設定...'}
+                    </button>
+                  );
+                })()}
                 <button onClick={() => { setEditLaneTags(contextMenu.laneId); setContextMenu(null); }}>タグ編集...</button>
                 <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'up'); setContextMenu(null); }}>上に移動</button>
                 <button onClick={() => { reorderLane(currentPageId, contextMenu.laneId, 'down'); setContextMenu(null); }}>下に移動</button>
