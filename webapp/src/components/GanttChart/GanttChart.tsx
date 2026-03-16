@@ -756,40 +756,6 @@ export function GanttChart() {
           {/* Background */}
           <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
 
-          {/* Connection arrows (below swim lanes so bars remain clickable) */}
-          <g clipPath="url(#content-area-clip)">
-            <ConnectionLayer
-              resolvedConnections={resolvedConns}
-              showMemos={showMemos}
-              selectedConnectionId={selectedConnectionId}
-              onConnectionClick={handleConnectionClick}
-              onConnectionDoubleClick={handleConnectionDoubleClick}
-              onConnectionContextMenu={handleConnectionContextMenu}
-            />
-          </g>
-
-          {/* Schedule lines (vertical lines from milestones) */}
-          <g clipPath="url(#content-area-clip)">
-            <ScheduleLineLayer
-              page={page}
-              timeline={timeline}
-              headerWidth={headerWidth}
-              zoomLevel={zoomLevel}
-              bodyHeight={bodyHeight}
-              selectedScheduleLineId={selectedScheduleLineId}
-              onScheduleLineClick={(e, lineId) => {
-                e.stopPropagation();
-                clearSelection();
-                setSelectedConnectionId(null);
-                setSelectedScheduleLineId(lineId);
-              }}
-              onScheduleLineContextMenu={(e, lineId) => {
-                setSelectedScheduleLineId(lineId);
-                setContextMenu({ x: e.clientX, y: e.clientY, type: 'scheduleLine', id: lineId, laneId: '' });
-              }}
-            />
-          </g>
-
           {/* Swim lanes (y starts from 0) */}
           {effectiveLanes.map((lane, i) => {
             const offset = laneOffsets[i];
@@ -819,6 +785,40 @@ export function GanttChart() {
               />
             );
           })}
+
+          {/* Connection arrows (rendered after swim lanes so they are clickable) */}
+          <g clipPath="url(#content-area-clip)">
+            <ConnectionLayer
+              resolvedConnections={resolvedConns}
+              showMemos={showMemos}
+              selectedConnectionId={selectedConnectionId}
+              onConnectionClick={handleConnectionClick}
+              onConnectionDoubleClick={handleConnectionDoubleClick}
+              onConnectionContextMenu={handleConnectionContextMenu}
+            />
+          </g>
+
+          {/* Schedule lines (vertical lines from milestones, rendered after swim lanes so they are clickable) */}
+          <g clipPath="url(#content-area-clip)">
+            <ScheduleLineLayer
+              page={page}
+              timeline={timeline}
+              headerWidth={headerWidth}
+              zoomLevel={zoomLevel}
+              bodyHeight={bodyHeight}
+              selectedScheduleLineId={selectedScheduleLineId}
+              onScheduleLineClick={(e, lineId) => {
+                e.stopPropagation();
+                clearSelection();
+                setSelectedConnectionId(null);
+                setSelectedScheduleLineId(lineId);
+              }}
+              onScheduleLineContextMenu={(e, lineId) => {
+                setSelectedScheduleLineId(lineId);
+                setContextMenu({ x: e.clientX, y: e.clientY, type: 'scheduleLine', id: lineId, laneId: '' });
+              }}
+            />
+          </g>
 
           {/* TextBox layer (rendered after swim lanes so boxes are clickable) */}
           {page.textBoxes && page.textBoxes.length > 0 && (
