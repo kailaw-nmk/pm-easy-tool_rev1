@@ -1,6 +1,7 @@
 {
-  "version": "3.1.0",
-  "lastModified": "2026-02-28T00:00:00.000Z",
+  "version": "3.3.0",
+  "lastModified": "2026-03-16T00:00:00.000Z",
+  "memo": "社内基幹システムリプレースプロジェクト（2026年1月〜2027年6月）\n旧システムからクラウドネイティブ環境への移行を実施。\nフロントエンド刷新・API再設計・データ移行を段階的に進行。",
   "timeline": {
     "startDate": "2026-01",
     "endDate": "2027-06",
@@ -45,7 +46,9 @@
               "label": "★ KickOff",
               "date": "2026-01",
               "yOffsetInLane": 60,
-              "tooltip": "プロジェクト開始"
+              "tooltip": "プロジェクト開始",
+              "color": "#2563eb",
+              "starSize": 18
             }
           ],
           "tags": ["企画", "全体"],
@@ -89,7 +92,17 @@
               "tooltip": "AWS環境構築"
             }
           ],
-          "milestones": [],
+          "milestones": [
+            {
+              "id": "ms_design_freeze",
+              "label": "★ 設計凍結",
+              "date": "2026-05",
+              "yOffsetInLane": 72,
+              "tooltip": "要件・設計の凍結",
+              "color": "#dc2626",
+              "starSize": 16
+            }
+          ],
           "tags": ["開発"],
           "registryId": "tmpl_dev"
         },
@@ -105,7 +118,8 @@
               "endMonth": "2026-09",
               "color": "pink",
               "yOffsetInLane": 8,
-              "heightPx": 24
+              "heightPx": 24,
+              "style": { "opacity": 0.8 }
             },
             {
               "id": "bar_it",
@@ -124,7 +138,9 @@
               "label": "★ リリース",
               "date": "2026-12",
               "yOffsetInLane": 30,
-              "tooltip": "本番リリース予定"
+              "tooltip": "本番リリース予定",
+              "color": "#dc2626",
+              "starSize": 20
             }
           ],
           "tags": ["テスト", "品質"],
@@ -153,7 +169,7 @@
               "color": "blue",
               "yOffsetInLane": 38,
               "heightPx": 22,
-              "style": { "opacity": 0.7 }
+              "style": { "dashed": true, "opacity": 0.7 }
             }
           ],
           "milestones": [],
@@ -170,7 +186,8 @@
           "toItemId": "bar_design",
           "toLaneId": "lane_planning",
           "lineType": "straight",
-          "memo": "要件確定後"
+          "memo": "要件確定後",
+          "strokeWidth": 1.5
         },
         {
           "id": "conn_2",
@@ -180,24 +197,109 @@
           "toLaneId": "lane_dev",
           "lineType": "orthogonal",
           "memo": "設計完了→開発開始",
-          "color": "#3b82f6"
+          "color": "#3b82f6",
+          "strokeWidth": 2
         },
         {
           "id": "conn_3",
+          "fromItemId": "bar_design",
+          "fromLaneId": "lane_planning",
+          "toItemId": "bar_backend",
+          "toLaneId": "lane_dev",
+          "lineType": "orthogonal",
+          "memo": "設計完了→API開発開始",
+          "color": "#3b82f6",
+          "strokeWidth": 2
+        },
+        {
+          "id": "conn_4",
           "fromItemId": "bar_frontend",
           "fromLaneId": "lane_dev",
           "toItemId": "bar_ut",
           "toLaneId": "lane_test",
-          "lineType": "orthogonal"
+          "lineType": "orthogonal",
+          "strokeWidth": 1.5
         },
         {
-          "id": "conn_4",
+          "id": "conn_5",
+          "fromItemId": "bar_backend",
+          "fromLaneId": "lane_dev",
+          "toItemId": "bar_ut",
+          "toLaneId": "lane_test",
+          "lineType": "orthogonal",
+          "color": "#f59e0b",
+          "strokeWidth": 1.5
+        },
+        {
+          "id": "conn_6",
+          "fromItemId": "bar_ut",
+          "fromLaneId": "lane_test",
+          "toItemId": "bar_it",
+          "toLaneId": "lane_test",
+          "lineType": "straight",
+          "strokeWidth": 1.5
+        },
+        {
+          "id": "conn_7",
           "fromItemId": "bar_it",
           "fromLaneId": "lane_test",
           "toItemId": "bar_ops_prep",
           "toLaneId": "lane_ops",
           "lineType": "straight",
-          "color": "#ef4444"
+          "color": "#ef4444",
+          "strokeWidth": 2
+        }
+      ],
+      "scheduleLines": [
+        {
+          "id": "sl_release",
+          "sourceItemId": "ms_release",
+          "sourceLaneId": "lane_test",
+          "color": "#ef4444",
+          "strokeWidth": 1.5,
+          "lineStyle": "dashed",
+          "label": "リリース期限"
+        },
+        {
+          "id": "sl_design_freeze",
+          "sourceItemId": "ms_design_freeze",
+          "sourceLaneId": "lane_dev",
+          "color": "#dc2626",
+          "strokeWidth": 1,
+          "lineStyle": "dotted",
+          "label": "設計凍結"
+        }
+      ],
+      "textBoxes": [
+        {
+          "id": "tb_note1",
+          "text": "要件凍結後の変更は\n変更管理委員会の承認が必要",
+          "x": 200,
+          "y": 12,
+          "width": 180,
+          "height": 48,
+          "fontSize": 11,
+          "textColor": "#991b1b",
+          "fillColor": "#fef2f2",
+          "borderColor": "#fca5a5",
+          "borderWidth": 1,
+          "arrowTargetItemId": "ms_design_freeze",
+          "arrowTargetLaneId": "lane_dev",
+          "arrowColor": "#ef4444",
+          "arrowStrokeWidth": 1.5
+        },
+        {
+          "id": "tb_note2",
+          "text": "並行開発期間\nFE/BE同時進行",
+          "x": 280,
+          "y": 135,
+          "width": 130,
+          "height": 36,
+          "fontSize": 10,
+          "textColor": "#166534",
+          "fillColor": "#f0fdf4",
+          "borderColor": "#86efac",
+          "borderWidth": 1
         }
       ]
     },
@@ -281,7 +383,178 @@
         }
       ],
       "annotations": [],
-      "connections": []
+      "connections": [
+        {
+          "id": "conn_p2_1",
+          "fromItemId": "bar_ui",
+          "fromLaneId": "lane_fe",
+          "toItemId": "bar_perf",
+          "toLaneId": "lane_fe",
+          "lineType": "straight",
+          "memo": "UI完成後→パフォーマンス改善",
+          "strokeWidth": 1.5
+        },
+        {
+          "id": "conn_p2_2",
+          "fromItemId": "bar_api",
+          "fromLaneId": "lane_be",
+          "toItemId": "bar_db",
+          "toLaneId": "lane_be",
+          "lineType": "straight",
+          "memo": "API実装→DB最適化",
+          "color": "#f59e0b",
+          "strokeWidth": 1.5
+        },
+        {
+          "id": "conn_p2_3",
+          "fromItemId": "bar_ui",
+          "fromLaneId": "lane_fe",
+          "toItemId": "bar_api",
+          "toLaneId": "lane_be",
+          "lineType": "orthogonal",
+          "memo": "FE-BE連携",
+          "color": "#8b5cf6",
+          "strokeWidth": 1
+        }
+      ]
+    },
+    {
+      "id": "p_sample_3",
+      "name": "マイルストーン一覧",
+      "timeline": {
+        "startDate": "2026-01",
+        "endDate": "2027-03",
+        "monthWidthPx": 80
+      },
+      "swimLanes": [
+        {
+          "id": "lane_ms_biz",
+          "label": "企画判断",
+          "heightPx": 60,
+          "bars": [],
+          "milestones": [
+            {
+              "id": "ms_biz_start",
+              "label": "★ PJ承認",
+              "date": "2026-01",
+              "yOffsetInLane": 20,
+              "tooltip": "プロジェクト計画承認",
+              "color": "#2563eb"
+            },
+            {
+              "id": "ms_biz_req_ok",
+              "label": "★ 要件承認",
+              "date": "2026-03",
+              "yOffsetInLane": 20,
+              "tooltip": "要件定義書の最終承認",
+              "color": "#2563eb"
+            }
+          ],
+          "tags": ["企画", "判断"],
+          "registryId": "tmpl_ms_biz"
+        },
+        {
+          "id": "lane_ms_dev",
+          "label": "開発判断",
+          "heightPx": 60,
+          "bars": [],
+          "milestones": [
+            {
+              "id": "ms_dev_design_ok",
+              "label": "★ 設計完了",
+              "date": "2026-05",
+              "yOffsetInLane": 20,
+              "tooltip": "基本設計・詳細設計レビュー完了",
+              "color": "#7c3aed"
+            },
+            {
+              "id": "ms_dev_code_freeze",
+              "label": "★ コードフリーズ",
+              "date": "2026-10",
+              "yOffsetInLane": 20,
+              "tooltip": "新規機能追加の凍結",
+              "color": "#7c3aed"
+            }
+          ],
+          "tags": ["開発", "判断"],
+          "registryId": "tmpl_ms_dev"
+        },
+        {
+          "id": "lane_ms_qa",
+          "label": "品質判断",
+          "heightPx": 60,
+          "bars": [],
+          "milestones": [
+            {
+              "id": "ms_qa_ut_done",
+              "label": "★ UT完了",
+              "date": "2026-09",
+              "yOffsetInLane": 20,
+              "tooltip": "単体テスト完了・品質基準達成",
+              "color": "#059669"
+            },
+            {
+              "id": "ms_qa_it_done",
+              "label": "★ 結合テスト完了",
+              "date": "2026-11",
+              "yOffsetInLane": 20,
+              "tooltip": "結合テスト全件パス",
+              "color": "#059669"
+            },
+            {
+              "id": "ms_qa_uat_done",
+              "label": "★ UAT完了",
+              "date": "2026-12",
+              "yOffsetInLane": 20,
+              "tooltip": "ユーザー受入テスト完了",
+              "color": "#059669"
+            }
+          ],
+          "tags": ["品質", "判断"],
+          "registryId": "tmpl_ms_qa"
+        },
+        {
+          "id": "lane_ms_exec",
+          "label": "経営判断",
+          "heightPx": 60,
+          "bars": [],
+          "milestones": [
+            {
+              "id": "ms_exec_go",
+              "label": "★ Go/NoGo判定",
+              "date": "2026-11",
+              "yOffsetInLane": 20,
+              "tooltip": "リリース可否の最終判定",
+              "color": "#dc2626",
+              "starSize": 20
+            },
+            {
+              "id": "ms_exec_release",
+              "label": "★ 本番リリース",
+              "date": "2026-12",
+              "yOffsetInLane": 20,
+              "tooltip": "本番環境リリース実施",
+              "color": "#dc2626",
+              "starSize": 20
+            }
+          ],
+          "tags": ["経営", "判断"],
+          "registryId": "tmpl_ms_exec"
+        }
+      ],
+      "annotations": [],
+      "connections": [],
+      "scheduleLines": [
+        {
+          "id": "sl_p3_release",
+          "sourceItemId": "ms_exec_release",
+          "sourceLaneId": "lane_ms_exec",
+          "color": "#ef4444",
+          "strokeWidth": 2,
+          "lineStyle": "solid",
+          "label": "本番リリース日"
+        }
+      ]
     }
   ],
   "laneRegistry": [
@@ -290,6 +563,28 @@
     { "id": "tmpl_test", "label": "テスト", "tags": ["テスト", "品質"], "defaultHeightPx": 80 },
     { "id": "tmpl_ops", "label": "運用", "tags": ["運用"], "defaultHeightPx": 70 },
     { "id": "tmpl_fe", "label": "フロントエンド\nチーム", "tags": ["開発", "フロントエンド"], "defaultHeightPx": 90 },
-    { "id": "tmpl_be", "label": "バックエンド\nチーム", "tags": ["開発", "バックエンド"], "defaultHeightPx": 90 }
-  ]
+    { "id": "tmpl_be", "label": "バックエンド\nチーム", "tags": ["開発", "バックエンド"], "defaultHeightPx": 90 },
+    { "id": "tmpl_ms_biz", "label": "企画判断", "tags": ["企画", "判断"], "defaultHeightPx": 60 },
+    { "id": "tmpl_ms_dev", "label": "開発判断", "tags": ["開発", "判断"], "defaultHeightPx": 60 },
+    { "id": "tmpl_ms_qa", "label": "品質判断", "tags": ["品質", "判断"], "defaultHeightPx": 60 },
+    { "id": "tmpl_ms_exec", "label": "経営判断", "tags": ["経営", "判断"], "defaultHeightPx": 60 }
+  ],
+  "settings": {
+    "fontSizeLaneTitle": 12,
+    "fontSizeBarText": 11,
+    "fontSizeMilestone": 11,
+    "fontSizeCalendar": 10,
+    "fontSizeTipMemo": 10,
+    "fontSizeTextBox": 11,
+    "zoomLevel": "month",
+    "displayMode": "fit",
+    "showTooltips": true,
+    "showMemos": true,
+    "themeMode": "light",
+    "defaultConnectionColor": "#6b7280",
+    "defaultConnectionStrokeWidth": 1.5,
+    "defaultScheduleLineColor": "#3b82f6",
+    "defaultScheduleLineStrokeWidth": 1.5,
+    "defaultScheduleLineStyle": "dashed"
+  }
 }
