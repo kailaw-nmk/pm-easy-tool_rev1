@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { TextBox, SchedulePage } from '../../types/schedule';
 import type { PositionContext } from '../../lib/position';
 import { getItemRect } from '../../lib/connection-utils';
+import { useUIStore } from '../../hooks/useUIStore';
 
 interface LaneOffset {
   laneId: string;
@@ -31,6 +32,7 @@ export function TextBoxLayer({
   onContextMenu,
   onUpdate,
 }: TextBoxLayerProps) {
+  const fontSizeTextBox = useUIStore((s) => s.fontSizeTextBox);
   const dragRef = useRef<{
     id: string;
     mode: 'move' | 'resize';
@@ -216,7 +218,7 @@ export function TextBoxLayer({
             >
               <div
                 style={{
-                  fontSize: tb.fontSize,
+                  fontSize: fontSizeTextBox,
                   color: tb.textColor,
                   wordBreak: 'break-word',
                   lineHeight: 1.3,

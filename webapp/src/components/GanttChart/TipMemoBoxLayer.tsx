@@ -3,6 +3,7 @@ import type { ScheduleBar, Milestone, SchedulePage, DisplayBox } from '../../typ
 import type { PositionContext } from '../../lib/position';
 import { getItemRect } from '../../lib/connection-utils';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
+import { useUIStore } from '../../hooks/useUIStore';
 
 interface LaneOffset {
   laneId: string;
@@ -67,6 +68,7 @@ export function TipMemoBoxLayer({
   const updateBar = useScheduleStore((s) => s.updateBar);
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
   const currentPageId = useScheduleStore((s) => s.currentPageId);
+  const fontSizeTipMemo = useUIStore((s) => s.fontSizeTipMemo);
 
   const dragRef = useRef<{
     key: string;
@@ -288,7 +290,7 @@ export function TipMemoBoxLayer({
         let renderDy = item.display.dy;
         let renderW = item.display.width;
         let renderH = item.display.height;
-        const renderFontSize = item.display.fontSize;
+        const renderFontSize = fontSizeTipMemo;
 
         if (isDragging && dragDelta) {
           if (dragRef.current!.mode === 'move') {

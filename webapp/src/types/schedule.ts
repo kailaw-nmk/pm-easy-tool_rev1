@@ -152,6 +152,8 @@ export interface DisplaySettings {
   fontSizeBarText: number;
   fontSizeMilestone: number;
   fontSizeCalendar: number;
+  fontSizeTipMemo?: number;
+  fontSizeTextBox?: number;
   zoomLevel: ZoomLevel;
   displayMode: DisplayMode;
   showTooltips: boolean;

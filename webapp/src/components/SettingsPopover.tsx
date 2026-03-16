@@ -7,6 +7,8 @@ export function SettingsPopover() {
     fontSizeBarText, setFontSizeBarText,
     fontSizeMilestone, setFontSizeMilestone,
     fontSizeCalendar, setFontSizeCalendar,
+    fontSizeTipMemo, setFontSizeTipMemo,
+    fontSizeTextBox, setFontSizeTextBox,
     displayMode,
   } = useUIStore();
 
@@ -40,6 +42,18 @@ export function SettingsPopover() {
         <input type="range" min={5} max={50} value={fontSizeCalendar}
           onChange={(e) => setFontSizeCalendar(Number(e.target.value))} />
         <span>{fontSizeCalendar}px</span>
+      </div>
+      <div className="settings-row">
+        <label>Tip/Memo</label>
+        <input type="range" min={6} max={48} value={fontSizeTipMemo}
+          onChange={(e) => setFontSizeTipMemo(Number(e.target.value))} />
+        <span>{fontSizeTipMemo}px</span>
+      </div>
+      <div className="settings-row">
+        <label>テキストボックス</label>
+        <input type="range" min={6} max={48} value={fontSizeTextBox}
+          onChange={(e) => setFontSizeTextBox(Number(e.target.value))} />
+        <span>{fontSizeTextBox}px</span>
       </div>
       {timeline && displayMode === 'fixed' && (
         <>
