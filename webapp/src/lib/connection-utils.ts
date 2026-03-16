@@ -84,8 +84,10 @@ function resolveItemPosition(
   // Check milestones
   const ms = lane.milestones.find((m) => m.id === itemId);
   if (ms) {
-    const x = itemX(ms.date, posCtx) + (ms.xOffsetPx ?? 0);
-    const w = ms.widthPx ?? 60;
+    const msW = ms.widthPx ?? 60;
+    const msCenterOff = posCtx.zoomLevel === 'day' ? 0 : (posCtx.timeline.monthWidthPx - msW) / 2;
+    const x = itemX(ms.date, posCtx) + msCenterOff + (ms.xOffsetPx ?? 0);
+    const w = msW;
     const y = laneY + ms.yOffsetInLane;
     const h = ms.heightPx ?? 24;
 
@@ -122,8 +124,10 @@ export function getItemRect(
 
   const ms = lane.milestones.find((m) => m.id === itemId);
   if (ms) {
-    const x = itemX(ms.date, posCtx) + (ms.xOffsetPx ?? 0);
-    return { x, y: laneY + ms.yOffsetInLane, w: ms.widthPx ?? 60, h: ms.heightPx ?? 24 };
+    const msW2 = ms.widthPx ?? 60;
+    const msCenterOff2 = posCtx.zoomLevel === 'day' ? 0 : (posCtx.timeline.monthWidthPx - msW2) / 2;
+    const x = itemX(ms.date, posCtx) + msCenterOff2 + (ms.xOffsetPx ?? 0);
+    return { x, y: laneY + ms.yOffsetInLane, w: msW2, h: ms.heightPx ?? 24 };
   }
 
   return null;

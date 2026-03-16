@@ -37,7 +37,9 @@ export function ScheduleLineLayer({
         if (!ms) return null;
 
         // Calculate X using same logic as Milestone.tsx
-        const dateX = itemX(ms.date, posCtx);
+        const dateXRaw = itemX(ms.date, posCtx);
+        const monthCenterOffset = zoomLevel === 'day' ? 0 : (timeline.monthWidthPx - DEFAULT_TEXT_WIDTH) / 2;
+        const dateX = dateXRaw + monthCenterOffset;
         const defaultStarXOff = (ms.xOffsetPx ?? 0) + (ms.widthPx ?? DEFAULT_TEXT_WIDTH) / 2;
         const starCX = dateX + (ms.starXOffset ?? defaultStarXOff);
 

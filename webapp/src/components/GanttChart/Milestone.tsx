@@ -71,7 +71,10 @@ export function MilestoneComponent({
   const hasText = labelLines.length > 0;
 
   // --- Computed positions ---
-  const dateX = itemX(milestone.date, posCtx);
+  // Offset so the star (center of default text width) aligns with month center
+  const dateXRaw = itemX(milestone.date, posCtx);
+  const monthCenterOffset = zoomLevel === 'day' ? 0 : (timeline.monthWidthPx - DEFAULT_TEXT_WIDTH) / 2;
+  const dateX = dateXRaw + monthCenterOffset;
   const labelLineHeight = fontSizeMilestone + 3;
 
   // Text area — auto-size when widthPx/heightPx not explicitly set

@@ -1,28 +1,58 @@
 import { useState } from 'react';
 import { useScheduleStore } from '../hooks/useScheduleStore';
+import { useUIStore } from '../hooks/useUIStore';
 import { ColorPicker } from './ColorPicker';
+import { xToMonth } from '../lib/date-utils';
+import { LANE_HEADER_WIDTH } from '../lib/constants';
 
 interface Props {
   type: 'bar' | 'milestone';
   onClose: () => void;
 }
 
+/** Get the month at the center of the current viewport */
+function getViewportCenterMonth(startDate: string, monthWidthPx: number): string | null {
+  const container = document.querySelector('.gantt-container');
+  if (!container || monthWidthPx <= 0) return null;
+  const centerX = container.scrollLeft + container.clientWidth / 2;
+  return xToMonth(centerX, startDate, monthWidthPx, LANE_HEADER_WIDTH);
+}
+
 export function AddItemPanel({ type, onClose }: Props) {
   const { data, currentPageId, addBar, addMilestone } = useScheduleStore();
+  const displayMode = useUIStore((s) => s.displayMode);
   const page = data?.pages.find((p) => p.id === currentPageId);
   const timeline = page?.timeline ?? data?.timeline;
   const lanes = page?.swimLanes ?? [];
 
   const [label, setLabel] = useState(type === 'bar' ? '新規バー' : '★ 新規');
   const [laneId, setLaneId] = useState(lanes[0]?.id ?? '');
-  const [startMonth, setStartMonth] = useState(timeline?.startDate ?? '2026-01');
+  const [startMonth, setStartMonth] = useState(() => {
+    if (!timeline) return '2026-01';
+    if (displayMode === 'fixed') {
+      return getViewportCenterMonth(timeline.startDate, timeline.monthWidthPx) ?? timeline.startDate;
+    }
+    return timeline.startDate;
+  });
   const [endMonth, setEndMonth] = useState(() => {
-    if (!timeline) return '2026-04';
-    const [y, m] = timeline.startDate.split('-').map(Number);
+    const base = (() => {
+      if (!timeline) return '2026-01';
+      if (displayMode === 'fixed') {
+        return getViewportCenterMonth(timeline.startDate, timeline.monthWidthPx) ?? timeline.startDate;
+      }
+      return timeline.startDate;
+    })();
+    const [y, m] = base.split('-').map(Number);
     const total = y * 12 + m - 1 + 3;
     return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
   });
-  const [date, setDate] = useState(timeline?.startDate ?? '2026-01');
+  const [date, setDate] = useState(() => {
+    if (!timeline) return '2026-01';
+    if (displayMode === 'fixed') {
+      return getViewportCenterMonth(timeline.startDate, timeline.monthWidthPx) ?? timeline.startDate;
+    }
+    return timeline.startDate;
+  });
   const [color, setColor] = useState('blue');
 
   if (!page || !timeline) return null;
