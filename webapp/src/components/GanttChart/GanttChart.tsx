@@ -42,7 +42,7 @@ interface TooltipState {
 export function GanttChart() {
   const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, updateMilestone, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, updateScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
-  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
+  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom, defaultConnectionColor, defaultConnectionStrokeWidth, defaultScheduleLineColor, defaultScheduleLineStrokeWidth, defaultScheduleLineStyle } = useUIStore();
   const tc = useThemeColors();
   const [editBar, setEditBar] = useState<{ barId: string; laneId: string } | null>(null);
   const [editMs, setEditMs] = useState<{ msId: string; laneId: string } | null>(null);
@@ -76,6 +76,7 @@ export function GanttChart() {
     originalIndex: number;
   } | null>(null);
   const [multiDragOffset, setMultiDragOffset] = useState<{ dx: number; dy: number } | null>(null);
+  const [multiDragMsOffset, setMultiDragMsOffset] = useState<{ dx: number; dy: number } | null>(null);
 
   const page = data?.pages.find((p) => p.id === currentPageId);
   const rawTimeline = page?.timeline ?? data?.timeline;
@@ -247,10 +248,12 @@ export function GanttChart() {
       fromLaneId: from.laneId,
       toItemId: to.id,
       toLaneId: to.laneId,
-      lineType: 'orthogonal',
+      lineType: 'straight',
+      color: defaultConnectionColor,
+      strokeWidth: defaultConnectionStrokeWidth,
     });
     setContextMenu(null);
-  }, [contextMenu, selected, currentPageId, addConnection]);
+  }, [contextMenu, selected, currentPageId, addConnection, defaultConnectionColor, defaultConnectionStrokeWidth]);
 
   const handleDuplicate = useCallback(() => {
     if (!contextMenu) return;
@@ -317,7 +320,9 @@ export function GanttChart() {
               toLaneId: connectHovered.laneId,
               fromAnchor: connectFrom.anchor,
               toAnchor: anchor,
-              lineType: 'orthogonal',
+              lineType: 'straight',
+              color: defaultConnectionColor,
+              strokeWidth: defaultConnectionStrokeWidth,
             });
           }
           clearConnectFrom();
@@ -473,6 +478,44 @@ export function GanttChart() {
     }
     setMultiDragOffset(null);
   }, [page, timeline, selected, headerWidth, zoomLevel, currentPageId, updateBar]);
+
+  // Multi-milestone drag: set of selected milestone IDs (2+ milestones selected)
+  const multiDragMsIds = useMemo(() => {
+    const msItems = selected.filter((s) => s.type === 'milestone');
+    if (msItems.length < 2) return undefined;
+    return new Set(msItems.map((s) => s.id));
+  }, [selected]);
+
+  const handleMultiMsDragMove = useCallback((dx: number, dy: number) => {
+    setMultiDragMsOffset({ dx, dy });
+  }, []);
+
+  const handleMultiMsDragEnd = useCallback((dx: number, dy: number) => {
+    if (!page) {
+      setMultiDragMsOffset(null);
+      return;
+    }
+    const msItems = selected.filter((s) => s.type === 'milestone');
+    for (const item of msItems) {
+      const lane = page.swimLanes.find((l) => l.id === item.laneId);
+      const ms = lane?.milestones.find((m) => m.id === item.id);
+      if (!ms || !lane) continue;
+
+      const updates: Partial<import('../../types/schedule').Milestone> = {
+        xOffsetPx: (ms.xOffsetPx ?? 0) + dx,
+        yOffsetInLane: Math.max(0, Math.round(ms.yOffsetInLane + dy)),
+      };
+      // Sync star position if explicitly set
+      if (ms.starXOffset != null) {
+        updates.starXOffset = ms.starXOffset + dx;
+      }
+      if (ms.starYOffset != null) {
+        updates.starYOffset = ms.starYOffset + dy;
+      }
+      updateMilestone(currentPageId, item.laneId, item.id, updates);
+    }
+    setMultiDragMsOffset(null);
+  }, [page, selected, currentPageId, updateMilestone]);
 
   // Delete key handler for selected items
   useEffect(() => {
@@ -782,6 +825,10 @@ export function GanttChart() {
                 multiDragBarIds={multiDragBarIds}
                 onMultiDragMove={handleMultiDragMove}
                 onMultiDragEnd={handleMultiDragEnd}
+                multiDragMsOffset={multiDragMsOffset}
+                multiDragMsIds={multiDragMsIds}
+                onMultiMsDragMove={handleMultiMsDragMove}
+                onMultiMsDragEnd={handleMultiMsDragEnd}
               />
             );
           })}
@@ -1081,9 +1128,9 @@ export function GanttChart() {
                         id: `sl_${Date.now()}`,
                         sourceItemId: contextMenu.id,
                         sourceLaneId: contextMenu.laneId,
-                        color: '#3b82f6',
-                        strokeWidth: 1.5,
-                        lineStyle: 'dashed',
+                        color: defaultScheduleLineColor,
+                        strokeWidth: defaultScheduleLineStrokeWidth,
+                        lineStyle: defaultScheduleLineStyle,
                       });
                       setContextMenu(null);
                     }}>スケジュールラインを描画</button>

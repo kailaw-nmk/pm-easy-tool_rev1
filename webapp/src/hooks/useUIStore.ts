@@ -18,6 +18,11 @@ function extractSettings(state: UIState): DisplaySettings {
     showTooltips: state.showTooltips,
     showMemos: state.showMemos,
     themeMode: state.themeMode,
+    defaultConnectionColor: state.defaultConnectionColor,
+    defaultConnectionStrokeWidth: state.defaultConnectionStrokeWidth,
+    defaultScheduleLineColor: state.defaultScheduleLineColor,
+    defaultScheduleLineStrokeWidth: state.defaultScheduleLineStrokeWidth,
+    defaultScheduleLineStyle: state.defaultScheduleLineStyle,
   };
 }
 
@@ -54,6 +59,13 @@ interface UIState {
   themeMode: ThemeMode;
   connectFrom: ConnectFrom | null;
   showHome: boolean;
+  // 接続線デフォルト
+  defaultConnectionColor: string;
+  defaultConnectionStrokeWidth: number;
+  // スケジュールラインデフォルト
+  defaultScheduleLineColor: string;
+  defaultScheduleLineStrokeWidth: number;
+  defaultScheduleLineStyle: 'solid' | 'dashed' | 'dotted';
   toggleTooltips: () => void;
   toggleMemos: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
@@ -72,6 +84,11 @@ interface UIState {
   setConnectFrom: (from: ConnectFrom) => void;
   clearConnectFrom: () => void;
   setShowHome: (show: boolean) => void;
+  setDefaultConnectionColor: (color: string) => void;
+  setDefaultConnectionStrokeWidth: (width: number) => void;
+  setDefaultScheduleLineColor: (color: string) => void;
+  setDefaultScheduleLineStrokeWidth: (width: number) => void;
+  setDefaultScheduleLineStyle: (style: 'solid' | 'dashed' | 'dotted') => void;
   loadSettings: () => Promise<void>;
   applySettings: (settings: DisplaySettings) => void;
 }
@@ -93,6 +110,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   themeMode: 'light',
   connectFrom: null,
   showHome: false,
+  defaultConnectionColor: '#6b7280',
+  defaultConnectionStrokeWidth: 1.5,
+  defaultScheduleLineColor: '#3b82f6',
+  defaultScheduleLineStrokeWidth: 1.5,
+  defaultScheduleLineStyle: 'dashed',
 
   toggleTooltips: () => set((s) => {
     const next = { showTooltips: !s.showTooltips };
@@ -142,6 +164,26 @@ export const useUIStore = create<UIState>((set, get) => ({
   setConnectFrom: (from) => set({ connectFrom: from }),
   clearConnectFrom: () => set({ connectFrom: null }),
   setShowHome: (show) => set({ showHome: show }),
+  setDefaultConnectionColor: (color) => {
+    set({ defaultConnectionColor: color });
+    scheduleSettingsSave(get);
+  },
+  setDefaultConnectionStrokeWidth: (width) => {
+    set({ defaultConnectionStrokeWidth: width });
+    scheduleSettingsSave(get);
+  },
+  setDefaultScheduleLineColor: (color) => {
+    set({ defaultScheduleLineColor: color });
+    scheduleSettingsSave(get);
+  },
+  setDefaultScheduleLineStrokeWidth: (width) => {
+    set({ defaultScheduleLineStrokeWidth: width });
+    scheduleSettingsSave(get);
+  },
+  setDefaultScheduleLineStyle: (style) => {
+    set({ defaultScheduleLineStyle: style });
+    scheduleSettingsSave(get);
+  },
   setThemeMode: (mode) => {
     try { localStorage.setItem('app-theme', mode); } catch {}
     set({ themeMode: mode });
@@ -173,6 +215,11 @@ export const useUIStore = create<UIState>((set, get) => ({
       showTooltips: settings.showTooltips ?? true,
       showMemos: settings.showMemos ?? true,
       themeMode: settings.themeMode ?? 'light',
+      defaultConnectionColor: settings.defaultConnectionColor ?? '#6b7280',
+      defaultConnectionStrokeWidth: settings.defaultConnectionStrokeWidth ?? 1.5,
+      defaultScheduleLineColor: settings.defaultScheduleLineColor ?? '#3b82f6',
+      defaultScheduleLineStrokeWidth: settings.defaultScheduleLineStrokeWidth ?? 1.5,
+      defaultScheduleLineStyle: settings.defaultScheduleLineStyle ?? 'dashed',
     });
     if (settings.themeMode) {
       try { localStorage.setItem('app-theme', settings.themeMode); } catch {}

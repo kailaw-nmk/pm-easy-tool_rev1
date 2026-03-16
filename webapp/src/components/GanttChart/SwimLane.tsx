@@ -26,6 +26,11 @@ interface Props {
   multiDragBarIds?: Set<string>;
   onMultiDragMove?: (dx: number, dy: number) => void;
   onMultiDragEnd?: (dx: number, dy: number) => void;
+  // Multi-milestone drag
+  multiDragMsOffset?: { dx: number; dy: number } | null;
+  multiDragMsIds?: Set<string>;
+  onMultiMsDragMove?: (dx: number, dy: number) => void;
+  onMultiMsDragEnd?: (dx: number, dy: number) => void;
 }
 
 export function SwimLaneComponent({
@@ -34,6 +39,7 @@ export function SwimLaneComponent({
   onBarDoubleClick, onMilestoneDoubleClick, onContextMenu, onItemClick,
   onTooltipShow, onTooltipHide,
   multiDragOffset, multiDragBarIds, onMultiDragMove, onMultiDragEnd,
+  multiDragMsOffset, multiDragMsIds, onMultiMsDragMove, onMultiMsDragEnd,
 }: Props) {
   const tc = useThemeColors();
 
@@ -94,6 +100,10 @@ export function SwimLaneComponent({
             onClick={(e) => onItemClick?.(e, 'milestone', ms.id, lane.id)}
             onTooltipShow={onTooltipShow}
             onTooltipHide={onTooltipHide}
+            multiDragOffset={multiDragMsIds?.has(ms.id) ? multiDragMsOffset : null}
+            isMultiSelected={multiDragMsIds?.has(ms.id)}
+            onMultiDragMove={multiDragMsIds?.has(ms.id) ? onMultiMsDragMove : undefined}
+            onMultiDragEnd={multiDragMsIds?.has(ms.id) ? onMultiMsDragEnd : undefined}
           />
         ))}
       </g>

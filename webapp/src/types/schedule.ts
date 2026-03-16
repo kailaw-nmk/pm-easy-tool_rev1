@@ -152,6 +152,13 @@ export interface DisplaySettings {
   showTooltips: boolean;
   showMemos: boolean;
   themeMode: 'light' | 'dark';
+  // 接続線デフォルト
+  defaultConnectionColor?: string;
+  defaultConnectionStrokeWidth?: number;
+  // スケジュールラインデフォルト
+  defaultScheduleLineColor?: string;
+  defaultScheduleLineStrokeWidth?: number;
+  defaultScheduleLineStyle?: 'solid' | 'dashed' | 'dotted';
 }
 
 export interface ScheduleData {

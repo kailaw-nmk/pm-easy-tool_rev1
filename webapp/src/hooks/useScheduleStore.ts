@@ -207,6 +207,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           showTooltips: uiState.showTooltips,
           showMemos: uiState.showMemos,
           themeMode: uiState.themeMode,
+          defaultConnectionColor: uiState.defaultConnectionColor,
+          defaultConnectionStrokeWidth: uiState.defaultConnectionStrokeWidth,
+          defaultScheduleLineColor: uiState.defaultScheduleLineColor,
+          defaultScheduleLineStrokeWidth: uiState.defaultScheduleLineStrokeWidth,
+          defaultScheduleLineStyle: uiState.defaultScheduleLineStyle,
         },
       };
       saveScheduleToStorage(dataWithSettings);
@@ -1230,6 +1235,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         showTooltips: uiState.showTooltips,
         showMemos: uiState.showMemos,
         themeMode: uiState.themeMode,
+        defaultConnectionColor: uiState.defaultConnectionColor,
+        defaultConnectionStrokeWidth: uiState.defaultConnectionStrokeWidth,
+        defaultScheduleLineColor: uiState.defaultScheduleLineColor,
+        defaultScheduleLineStrokeWidth: uiState.defaultScheduleLineStrokeWidth,
+        defaultScheduleLineStyle: uiState.defaultScheduleLineStyle,
       },
     };
     const json = JSON.stringify(exportData, null, 2);

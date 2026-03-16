@@ -24,6 +24,11 @@ interface Props {
   onClick?: (e: React.MouseEvent) => void;
   onTooltipShow?: (text: string, x: number, y: number) => void;
   onTooltipHide?: () => void;
+  // Multi-milestone drag support
+  multiDragOffset?: { dx: number; dy: number } | null;
+  onMultiDragMove?: (dx: number, dy: number) => void;
+  onMultiDragEnd?: (dx: number, dy: number) => void;
+  isMultiSelected?: boolean;
 }
 
 const DRAG_THRESHOLD = 3;
@@ -38,6 +43,7 @@ export function MilestoneComponent({
   milestone, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, fontScale = 1.0, laneHeight,
   isSelected, showMemos, onDoubleClick, onContextMenu, onClick,
   onTooltipShow, onTooltipHide,
+  multiDragOffset, onMultiDragMove, onMultiDragEnd, isMultiSelected,
 }: Props) {
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
   const baseFontSizeMilestone = useUIStore((s) => s.fontSizeMilestone);
@@ -94,8 +100,13 @@ export function MilestoneComponent({
   const centerShiftX = isAutoWidth ? -(effectiveW - DEFAULT_TEXT_WIDTH) / 2 : 0;
   const centerShiftY = isAutoHeight ? -(effectiveH - DEFAULT_TEXT_HEIGHT) / 2 : 0;
 
-  const textX = dateX + (milestone.xOffsetPx ?? 0) + centerShiftX + textDragOffset.dx;
-  const textY = laneY + milestone.yOffsetInLane + centerShiftY + textDragOffset.dy;
+  // For follower milestones (multi-selected but not the one being dragged), apply parent offset
+  const isFollower = multiDragOffset && (textDragOffset.dx === 0 && textDragOffset.dy === 0 && starDragOffset.dx === 0 && starDragOffset.dy === 0);
+  const multiDx = isFollower ? multiDragOffset.dx : 0;
+  const multiDy = isFollower ? multiDragOffset.dy : 0;
+
+  const textX = dateX + (milestone.xOffsetPx ?? 0) + centerShiftX + textDragOffset.dx + multiDx;
+  const textY = laneY + milestone.yOffsetInLane + centerShiftY + textDragOffset.dy + multiDy;
 
   // Star
   const starSizeBase = milestone.starSize ?? fontSizeMilestone * 1.6;
@@ -105,8 +116,8 @@ export function MilestoneComponent({
   const defaultStarXOff = (milestone.xOffsetPx ?? 0) + (milestone.widthPx ?? DEFAULT_TEXT_WIDTH) / 2;
   const defaultStarYOff = milestone.yOffsetInLane + (milestone.heightPx ?? DEFAULT_TEXT_HEIGHT) + starSizeBase * 0.6 + 2;
 
-  const starCX = dateX + (milestone.starXOffset ?? defaultStarXOff) + starDragOffset.dx;
-  const starCY = laneY + (milestone.starYOffset ?? defaultStarYOff) + starDragOffset.dy;
+  const starCX = dateX + (milestone.starXOffset ?? defaultStarXOff) + starDragOffset.dx + multiDx;
+  const starCY = laneY + (milestone.starYOffset ?? defaultStarYOff) + starDragOffset.dy + multiDy;
   const starHitSize = Math.max(starSizeCurrent * 1.1, 20);
 
   // --- Text drag handlers ---
@@ -182,6 +193,9 @@ export function MilestoneComponent({
           textDragRef.current.axisLock = 'none';
         }
         setTextDragOffset({ dx, dy });
+        if (isMultiSelected && onMultiDragMove) {
+          onMultiDragMove(dx, dy);
+        }
       }
     }
     if (textResizeRef.current) {
@@ -208,6 +222,9 @@ export function MilestoneComponent({
           starDragRef.current.axisLock = 'none';
         }
         setStarDragOffset({ dx, dy });
+        if (isMultiSelected && onMultiDragMove) {
+          onMultiDragMove(dx, dy);
+        }
       }
     }
     if (starResizeRef.current) {
@@ -216,7 +233,7 @@ export function MilestoneComponent({
       const ds = (dx + dy) / 2;
       setStarResizeDelta({ ds: Math.max(MIN_STAR_SIZE - starResizeRef.current.origSize, ds) });
     }
-  }, []);
+  }, [isMultiSelected, onMultiDragMove]);
 
   // --- Common pointer up ---
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -244,6 +261,13 @@ export function MilestoneComponent({
       let dy = e.clientY - textDragRef.current.startY;
       if (textDragRef.current.axisLock === 'h') dy = 0;
       else if (textDragRef.current.axisLock === 'v') dx = 0;
+      // If multi-selected, delegate to parent for batch update
+      if (isMultiSelected && onMultiDragEnd) {
+        onMultiDragEnd(dx, dy);
+        setTextDragOffset({ dx: 0, dy: 0 });
+        textDragRef.current = null;
+        return;
+      }
       const updates: Partial<Milestone> = {
         xOffsetPx: textDragRef.current.origXOff + dx,
         yOffsetInLane: Math.max(0, Math.round(textDragRef.current.origYOff + dy)),
@@ -285,6 +309,13 @@ export function MilestoneComponent({
       let dy = e.clientY - starDragRef.current.startY;
       if (starDragRef.current.axisLock === 'h') dy = 0;
       else if (starDragRef.current.axisLock === 'v') dx = 0;
+      // If multi-selected, delegate to parent for batch update
+      if (isMultiSelected && onMultiDragEnd) {
+        onMultiDragEnd(dx, dy);
+        setStarDragOffset({ dx: 0, dy: 0 });
+        starDragRef.current = null;
+        return;
+      }
       const updates: Partial<Milestone> = {
         starXOffset: starDragRef.current.origXOff + dx,
         starYOffset: starDragRef.current.origYOff + dy,
@@ -299,7 +330,7 @@ export function MilestoneComponent({
       starDragRef.current = null;
       return;
     }
-  }, [pageId, laneId, milestone.id, onClick, updateMilestone]);
+  }, [pageId, laneId, milestone.id, onClick, updateMilestone, isMultiSelected, onMultiDragEnd]);
 
   // --- Tooltip ---
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
