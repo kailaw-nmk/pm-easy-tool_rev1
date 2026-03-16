@@ -131,6 +131,7 @@ export interface DisplaySettings {
 export interface ScheduleData {
   version: string;
   lastModified: string;
+  memo?: string;
   timeline: PageTimeline & {
     laneHeaderWidthPx: number;
   };

@@ -6,6 +6,7 @@ import { SettingsPopover } from './SettingsPopover';
 import { LaneRegistryPanel } from './LaneRegistryPanel';
 import { ToolbarDropdown } from './ToolbarDropdown';
 import { HelpManual } from './HelpManual';
+import { FileMemoDialog } from './FileMemoDialog';
 import { ExportPageDialog } from './ExportPageDialog';
 import { ImportConflictDialog } from './ImportConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
@@ -16,7 +17,7 @@ import {
   MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
   Settings, HelpCircle, Moon, Sun, MoreHorizontal,
   RectangleHorizontal, Star, Rows3, LayoutList,
-  Upload, Download, Image, FileText,
+  Upload, Download, Image, FileText, NotebookPen,
 } from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution } from '../types/schedule';
 
@@ -28,6 +29,7 @@ export function Toolbar() {
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showFileMemo, setShowFileMemo] = useState(false);
   const [pendingPartialImport, setPendingPartialImport] = useState<{
     data: PartialScheduleExport;
     conflicts: { pageName: string }[];
@@ -202,6 +204,11 @@ export function Toolbar() {
           <StickyNote size={16} /> Memo
         </button>
 
+        {/* File memo */}
+        <button className="icon-btn" onClick={() => setShowFileMemo(true)} title="ファイルメモ">
+          <NotebookPen size={16} />
+        </button>
+
         <div className="separator" />
 
         {/* Zoom level — segment control */}
@@ -305,6 +312,10 @@ export function Toolbar() {
 
       {showExportDialog && (
         <ExportPageDialog onClose={() => setShowExportDialog(false)} />
+      )}
+
+      {showFileMemo && (
+        <FileMemoDialog onClose={() => setShowFileMemo(false)} />
       )}
 
       {pendingPartialImport && (

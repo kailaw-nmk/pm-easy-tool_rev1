@@ -66,6 +66,8 @@ interface ScheduleState {
   addScheduleLine: (pageId: string, line: ScheduleLine) => void;
   updateScheduleLine: (pageId: string, lineId: string, updates: Partial<ScheduleLine>) => void;
   deleteScheduleLine: (pageId: string, lineId: string) => void;
+  // Memo
+  updateMemo: (memo: string) => void;
   // Import/Export
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
@@ -944,6 +946,19 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   canRedo: () => {
     const { historyIndex, history } = get();
     return historyIndex < history.length - 1;
+  },
+
+  updateMemo: (memo: string) => {
+    set((state) => {
+      if (!state.data) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        draft.memo = memo || undefined;
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
   },
 
   importData: (rawData: ScheduleData) => {
