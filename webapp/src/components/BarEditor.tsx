@@ -11,12 +11,13 @@ interface Props {
 }
 
 export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
-  const { data, updateBar, deleteBar } = useScheduleStore();
+  const { data, updateBar, deleteBar, moveBarToLane } = useScheduleStore();
   const tc = useThemeColors();
 
   const page = data?.pages.find((p) => p.id === pageId);
   const lane = page?.swimLanes.find((l) => l.id === laneId);
   const bar = lane?.bars.find((b) => b.id === barId);
+  const lanes = page?.swimLanes ?? [];
 
   const [label, setLabel] = useState(bar?.label ?? '');
   const [startMonth, setStartMonth] = useState((bar?.startMonth ?? '').substring(0, 7));
@@ -24,6 +25,7 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
   const [color, setColor] = useState(bar?.color ?? 'blue');
   const [tooltip, setTooltip] = useState(bar?.tooltip ?? '');
   const [memo, setMemo] = useState(bar?.memo ?? '');
+  const [targetLaneId, setTargetLaneId] = useState(laneId);
 
   if (!bar) return null;
 
@@ -33,6 +35,9 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
       tooltip: tooltip || undefined,
       memo: memo || undefined,
     });
+    if (targetLaneId !== laneId) {
+      moveBarToLane(pageId, laneId, targetLaneId, barId);
+    }
     onClose();
   };
 
@@ -48,6 +53,14 @@ export function BarEditorDialog({ pageId, laneId, barId, onClose }: Props) {
         <div className="field">
           <label>Label</label>
           <input value={label} onChange={(e) => setLabel(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>レーン</label>
+          <select value={targetLaneId} onChange={(e) => setTargetLaneId(e.target.value)}>
+            {lanes.map((l) => (
+              <option key={l.id} value={l.id}>{l.label.replace(/\n/g, ' ')}</option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label>Start Month (YYYY-MM)</label>

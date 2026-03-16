@@ -26,6 +26,7 @@ interface ScheduleState {
   updateBar: (pageId: string, laneId: string, barId: string, updates: Partial<ScheduleBar>) => void;
   addBar: (pageId: string, laneId: string, bar: ScheduleBar) => void;
   deleteBar: (pageId: string, laneId: string, barId: string) => void;
+  moveBarToLane: (pageId: string, fromLaneId: string, toLaneId: string, barId: string) => void;
   duplicateBar: (pageId: string, laneId: string, barId: string) => void;
   // Milestone operations
   updateMilestone: (pageId: string, laneId: string, msId: string, updates: Partial<Milestone>) => void;
@@ -244,6 +245,46 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         if (!lane) return;
         lane.bars.push(bar);
         syncLaneContentToSiblings(draft, pageId, laneId);
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  moveBarToLane: (pageId, fromLaneId, toLaneId, barId) => {
+    if (fromLaneId === toLaneId) return;
+    set((state) => {
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data!, (draft) => {
+        const page = draft.pages.find((p) => p.id === pageId);
+        if (!page) return;
+        const fromLane = page.swimLanes.find((l) => l.id === fromLaneId);
+        const toLane = page.swimLanes.find((l) => l.id === toLaneId);
+        if (!fromLane || !toLane) return;
+        const barIndex = fromLane.bars.findIndex((b) => b.id === barId);
+        if (barIndex < 0) return;
+        const [bar] = fromLane.bars.splice(barIndex, 1);
+        toLane.bars.push(bar);
+        // Update connection laneId references
+        if (page.connections) {
+          for (const conn of page.connections) {
+            if (conn.fromItemId === barId && conn.fromLaneId === fromLaneId) {
+              conn.fromLaneId = toLaneId;
+            }
+            if (conn.toItemId === barId && conn.toLaneId === fromLaneId) {
+              conn.toLaneId = toLaneId;
+            }
+          }
+        }
+        // Update textBox arrow references
+        if (page.textBoxes) {
+          for (const tb of page.textBoxes) {
+            if (tb.arrowTargetItemId === barId && tb.arrowTargetLaneId === fromLaneId) {
+              tb.arrowTargetLaneId = toLaneId;
+            }
+          }
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
