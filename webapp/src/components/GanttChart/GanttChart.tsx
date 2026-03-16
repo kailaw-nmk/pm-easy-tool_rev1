@@ -39,7 +39,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -855,7 +855,43 @@ export function GanttChart() {
               <button className="context-menu-close" onClick={closeContextMenu}>✕</button>
             </div>
             {contextMenu.type === 'bar' && (
-              <button onClick={handleDuplicate}>Duplicate</button>
+              <>
+                <button onClick={handleDuplicate}>Duplicate</button>
+                {(() => {
+                  const selectedBars = selected.filter((s) => s.type === 'bar');
+                  if (selectedBars.length >= 2 && selectedBars.some((s) => s.id === contextMenu.id)) {
+                    return (
+                      <button onClick={() => {
+                        const input = prompt(`選択中の${selectedBars.length}本のバーの高さ (px):`, '22');
+                        if (input !== null) {
+                          const val = parseInt(input, 10);
+                          if (!isNaN(val) && val >= 8) {
+                            for (const item of selectedBars) {
+                              updateBar(currentPageId, item.laneId, item.id, { heightPx: val });
+                            }
+                          }
+                        }
+                        setContextMenu(null);
+                      }}>高さを揃える ({selectedBars.length}本)</button>
+                    );
+                  }
+                  return (
+                    <button onClick={() => {
+                      const bar = page?.swimLanes
+                        .find((l) => l.id === contextMenu.laneId)
+                        ?.bars.find((b) => b.id === contextMenu.id);
+                      const input = prompt('バーの高さ (px):', String(bar?.heightPx ?? 22));
+                      if (input !== null) {
+                        const val = parseInt(input, 10);
+                        if (!isNaN(val) && val >= 8) {
+                          updateBar(currentPageId, contextMenu.laneId, contextMenu.id, { heightPx: val });
+                        }
+                      }
+                      setContextMenu(null);
+                    }}>高さ設定...</button>
+                  );
+                })()}
+              </>
             )}
             {(contextMenu.type === 'bar' || contextMenu.type === 'milestone') && (
               <>
