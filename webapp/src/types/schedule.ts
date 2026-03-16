@@ -151,6 +151,7 @@ export interface DisplaySettings {
   displayMode: DisplayMode;
   showTooltips: boolean;
   showMemos: boolean;
+  showMonthGridLines?: boolean;
   themeMode: 'light' | 'dark';
   // 接続線デフォルト
   defaultConnectionColor?: string;

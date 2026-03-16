@@ -17,6 +17,7 @@ function extractSettings(state: UIState): DisplaySettings {
     displayMode: state.displayMode,
     showTooltips: state.showTooltips,
     showMemos: state.showMemos,
+    showMonthGridLines: state.showMonthGridLines,
     themeMode: state.themeMode,
     defaultConnectionColor: state.defaultConnectionColor,
     defaultConnectionStrokeWidth: state.defaultConnectionStrokeWidth,
@@ -45,6 +46,7 @@ interface ConnectFrom {
 interface UIState {
   showTooltips: boolean;
   showMemos: boolean;
+  showMonthGridLines: boolean;
   zoomLevel: ZoomLevel;
   placementMode: PlacementMode;
   fontSizeLaneTitle: number;
@@ -68,6 +70,7 @@ interface UIState {
   defaultScheduleLineStyle: 'solid' | 'dashed' | 'dotted';
   toggleTooltips: () => void;
   toggleMemos: () => void;
+  toggleMonthGridLines: () => void;
   setZoomLevel: (level: ZoomLevel) => void;
   setPlacementMode: (mode: PlacementMode) => void;
   setFontSizeLaneTitle: (size: number) => void;
@@ -96,6 +99,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set, get) => ({
   showTooltips: true,
   showMemos: true,
+  showMonthGridLines: false,
   zoomLevel: 'month',
   placementMode: 'none',
   fontSizeLaneTitle: 8,
@@ -123,6 +127,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   }),
   toggleMemos: () => set((s) => {
     const next = { showMemos: !s.showMemos };
+    setTimeout(() => scheduleSettingsSave(get), 0);
+    return next;
+  }),
+  toggleMonthGridLines: () => set((s) => {
+    const next = { showMonthGridLines: !s.showMonthGridLines };
     setTimeout(() => scheduleSettingsSave(get), 0);
     return next;
   }),
@@ -214,6 +223,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       displayMode: settings.displayMode ?? 'fixed',
       showTooltips: settings.showTooltips ?? true,
       showMemos: settings.showMemos ?? true,
+      showMonthGridLines: (settings as any).showMonthGridLines ?? false,
       themeMode: settings.themeMode ?? 'light',
       defaultConnectionColor: settings.defaultConnectionColor ?? '#6b7280',
       defaultConnectionStrokeWidth: settings.defaultConnectionStrokeWidth ?? 1.5,

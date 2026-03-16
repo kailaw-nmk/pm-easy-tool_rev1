@@ -18,8 +18,8 @@ import { ScheduleLineEditorDialog } from '../ScheduleLineEditor';
 import { TextBoxLayer } from './TextBoxLayer';
 import { TipMemoBoxLayer } from './TipMemoBoxLayer';
 import { TextBoxEditorDialog } from '../TextBoxEditor';
-import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay, xToMonth } from '../../lib/date-utils';
-import { dayZoomTotalWidth, getHeaderHeight } from '../../lib/zoom';
+import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay, xToMonth, generateMonthRange } from '../../lib/date-utils';
+import { dayZoomTotalWidth, getHeaderHeight, getZoomConfig, getDayWidth } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
 import { resolveConnections, getItemRect } from '../../lib/connection-utils';
 import { generateSnapPoints, findNearestSnapPoint, type SnapPoint } from '../../lib/snap-points';
@@ -42,7 +42,7 @@ interface TooltipState {
 export function GanttChart() {
   const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, updateMilestone, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, updateScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
-  const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom, defaultConnectionColor, defaultConnectionStrokeWidth, defaultScheduleLineColor, defaultScheduleLineStrokeWidth, defaultScheduleLineStyle } = useUIStore();
+  const { showTooltips, showMemos, showMonthGridLines, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom, defaultConnectionColor, defaultConnectionStrokeWidth, defaultScheduleLineColor, defaultScheduleLineStrokeWidth, defaultScheduleLineStyle } = useUIStore();
   const tc = useThemeColors();
   const [editBar, setEditBar] = useState<{ barId: string; laneId: string } | null>(null);
   const [editMs, setEditMs] = useState<{ msId: string; laneId: string } | null>(null);
@@ -812,6 +812,31 @@ export function GanttChart() {
 
           {/* Background */}
           <rect className="gantt-bg" x={0} y={0} width={totalWidth} height={bodyHeight} fill={tc.chartBg} />
+
+          {/* Month grid lines */}
+          {showMonthGridLines && timeline && (() => {
+            const months = generateMonthRange(timeline.startDate, timeline.endDate);
+            const config = getZoomConfig(zoomLevel);
+            return months.map((m, i) => {
+              if (i === 0) return null; // skip first month (left edge)
+              const { year, month } = parseYearMonth(m);
+              let x: number;
+              if (config.useDayWidth) {
+                const dayWidth = getDayWidth(timeline.monthWidthPx);
+                const startDate = parseYearMonth(timeline.startDate);
+                const startMs = new Date(startDate.year, startDate.month - 1, 1).getTime();
+                const currentMs = new Date(year, month - 1, 1).getTime();
+                const days = Math.round((currentMs - startMs) / (1000 * 60 * 60 * 24));
+                x = headerWidth + days * dayWidth;
+              } else {
+                x = headerWidth + i * timeline.monthWidthPx;
+              }
+              return (
+                <line key={`grid-${m}`} x1={x} y1={0} x2={x} y2={bodyHeight}
+                  stroke={tc.laneBorder} strokeWidth={1} />
+              );
+            });
+          })()}
 
           {/* Swim lanes (y starts from 0) */}
           {effectiveLanes.map((lane, i) => {

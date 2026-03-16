@@ -17,7 +17,7 @@ import { exportToPng, exportToPdf } from '../lib/client-export';
 import { mergeLaneRegistry, detectLaneConflicts } from '../lib/import-utils';
 import {
   Home, Save, Undo2, Redo2, Plus, ChevronDown, Link2,
-  MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
+  MousePointerClick, MessageSquare, StickyNote, CalendarCheck, Grid3x3,
   Settings, HelpCircle, Moon, Sun, MoreHorizontal,
   RectangleHorizontal, Star, Rows3, LayoutList,
   Upload, Download, Image, FileText, NotebookPen, Type, Crosshair,
@@ -26,7 +26,7 @@ import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution,
 
 export function Toolbar() {
   const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive, resetItemPositions } = useScheduleStore();
-  const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme, setShowHome } = useUIStore();
+  const { showTooltips, showMemos, showMonthGridLines, toggleTooltips, toggleMemos, toggleMonthGridLines, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme, setShowHome } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
@@ -282,6 +282,9 @@ export function Toolbar() {
         </button>
         <button className={showMemos ? 'toggle-active' : ''} onClick={toggleMemos} title="Memo ON/OFF">
           <StickyNote size={16} /> Memo
+        </button>
+        <button className={showMonthGridLines ? 'toggle-active' : ''} onClick={toggleMonthGridLines} title="月グリッド線 ON/OFF">
+          <Grid3x3 size={16} /> Grid
         </button>
 
         {/* File memo */}
