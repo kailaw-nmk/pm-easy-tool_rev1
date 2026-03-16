@@ -118,20 +118,25 @@ export function generateMonthRange(start: string, end: string): string[] {
   return months;
 }
 
-/** Get quarter label (1Q-4Q) from month number */
+/** Get quarter label (Q1-Q4) from month number (fiscal year: Q1=4-6, Q2=7-9, Q3=10-12, Q4=1-3) */
 export function monthToQuarter(month: number): string {
-  return `${Math.ceil(month / 3)}Q`;
+  if (month >= 4 && month <= 6) return 'Q1';
+  if (month >= 7 && month <= 9) return 'Q2';
+  if (month >= 10 && month <= 12) return 'Q3';
+  return 'Q4';
 }
 
-/** Get English month abbreviation */
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/** Get month number label */
 export function monthAbbr(month: number): string {
-  return MONTH_ABBR[month - 1] ?? '';
+  return `${month}`;
 }
 
-/** Get the fiscal quarter start month for a given month */
+/** Get the fiscal quarter start month for a given month (Q1=4, Q2=7, Q3=10, Q4=1) */
 export function quarterStartMonth(month: number): number {
-  return Math.floor((month - 1) / 3) * 3 + 1;
+  if (month >= 4 && month <= 6) return 4;
+  if (month >= 7 && month <= 9) return 7;
+  if (month >= 10 && month <= 12) return 10;
+  return 1;
 }
 
 /** Get today as "YYYY-MM" */

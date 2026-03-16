@@ -48,6 +48,8 @@ export function GanttChart() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [editConnection, setEditConnection] = useState<string | null>(null);
   const [selectedScheduleLineId, setSelectedScheduleLineId] = useState<string | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [contextMenuPos, setContextMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [editScheduleLine, setEditScheduleLine] = useState<string | null>(null);
   const [connectHovered, setConnectHovered] = useState<{ itemId: string; laneId: string } | null>(null);
   const [connectMousePos, setConnectMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -162,7 +164,22 @@ export function GanttChart() {
     setContextMenu({ x: e.clientX, y: e.clientY, type: 'lane', id: laneId, laneId });
   }, []);
 
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  const closeContextMenu = useCallback(() => { setContextMenu(null); setContextMenuPos(null); }, []);
+
+  // Adjust context menu position to stay within viewport
+  useEffect(() => {
+    if (!contextMenu || !contextMenuRef.current) { setContextMenuPos(null); return; }
+    const el = contextMenuRef.current;
+    const rect = el.getBoundingClientRect();
+    const pad = 8;
+    let left = contextMenu.x;
+    let top = contextMenu.y;
+    if (left + rect.width > window.innerWidth - pad) left = window.innerWidth - rect.width - pad;
+    if (top + rect.height > window.innerHeight - pad) top = window.innerHeight - rect.height - pad;
+    if (left < pad) left = pad;
+    if (top < pad) top = pad;
+    setContextMenuPos({ left, top });
+  }, [contextMenu]);
 
   const handleDelete = useCallback(() => {
     if (!contextMenu) return;
@@ -752,8 +769,13 @@ export function GanttChart() {
         <>
           <div className="context-menu-overlay" onClick={closeContextMenu} onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }} />
           <div
+            ref={contextMenuRef}
             className="context-menu"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{
+              left: contextMenuPos ? contextMenuPos.left : contextMenu.x,
+              top: contextMenuPos ? contextMenuPos.top : contextMenu.y,
+              visibility: contextMenuPos ? 'visible' : 'hidden',
+            }}
           >
             <div className="context-menu-header">
               <button className="context-menu-close" onClick={closeContextMenu}>✕</button>
