@@ -77,7 +77,7 @@ export function TextBoxEditorDialog({ pageId, textBoxId, onClose }: Props) {
         </div>
         <div className="field">
           <label>フォントサイズ: {fontSize}px</label>
-          <input type="range" min={8} max={24} step={1} value={fontSize}
+          <input type="range" min={6} max={48} step={1} value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
             style={{ width: '100%' }}
           />

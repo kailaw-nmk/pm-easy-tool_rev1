@@ -40,7 +40,6 @@ export function TextBoxLayer({
     origY: number;
     origW: number;
     origH: number;
-    origFontSize: number;
   } | null>(null);
   const [dragDelta, setDragDelta] = useState<{ dx: number; dy: number } | null>(null);
 
@@ -57,7 +56,6 @@ export function TextBoxLayer({
       origY: tb.y,
       origW: tb.width,
       origH: tb.height,
-      origFontSize: tb.fontSize,
     };
     setDragDelta({ dx: 0, dy: 0 });
 
@@ -100,16 +98,9 @@ export function TextBoxLayer({
               y: Math.round(d.origY + lastDelta.dy),
             });
           } else {
-            const newW = Math.max(40, Math.round(d.origW + lastDelta.dx));
-            const newH = Math.max(20, Math.round(d.origH + lastDelta.dy));
-            const scaleX = newW / d.origW;
-            const scaleY = newH / d.origH;
-            const scale = Math.sqrt(scaleX * scaleY);
-            const newFontSize = Math.max(6, Math.min(48, Math.round(d.origFontSize * scale)));
             onUpdate(d.id, {
-              width: newW,
-              height: newH,
-              fontSize: newFontSize,
+              width: Math.max(40, Math.round(d.origW + lastDelta.dx)),
+              height: Math.max(20, Math.round(d.origH + lastDelta.dy)),
             });
           }
         }
@@ -149,7 +140,6 @@ export function TextBoxLayer({
         let renderY = tb.y;
         let renderW = tb.width;
         let renderH = tb.height;
-        let renderFontSize = tb.fontSize;
 
         if (isDragging && dragDelta) {
           if (dragRef.current!.mode === 'move') {
@@ -158,10 +148,6 @@ export function TextBoxLayer({
           } else {
             renderW = Math.max(40, dragRef.current!.origW + dragDelta.dx);
             renderH = Math.max(20, dragRef.current!.origH + dragDelta.dy);
-            const scaleX = renderW / dragRef.current!.origW;
-            const scaleY = renderH / dragRef.current!.origH;
-            const scale = Math.sqrt(scaleX * scaleY);
-            renderFontSize = Math.max(6, Math.min(48, Math.round(dragRef.current!.origFontSize * scale)));
           }
         }
 
@@ -226,12 +212,12 @@ export function TextBoxLayer({
               width={renderW - 8}
               height={renderH - 4}
               pointerEvents="none"
+              style={{ overflow: 'visible' }}
             >
               <div
                 style={{
-                  fontSize: renderFontSize,
+                  fontSize: tb.fontSize,
                   color: tb.textColor,
-                  overflow: 'hidden',
                   wordBreak: 'break-word',
                   lineHeight: 1.3,
                   userSelect: 'none',

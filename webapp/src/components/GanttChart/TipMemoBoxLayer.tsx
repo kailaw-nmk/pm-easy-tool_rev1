@@ -230,18 +230,12 @@ export function TipMemoBoxLayer({
               updateMilestone(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
             }
           } else {
-            const newW = Math.max(40, Math.round(d.origW + lastDelta.dx));
-            const newH = Math.max(20, Math.round(d.origH + lastDelta.dy));
-            const scaleX = newW / d.origW;
-            const scaleY = newH / d.origH;
-            const scale = Math.sqrt(scaleX * scaleY);
-            const newFontSize = Math.max(6, Math.min(48, Math.round(d.origFontSize * scale)));
             const newDisplay: DisplayBox = {
               dx: d.origDx,
               dy: d.origDy,
-              width: newW,
-              height: newH,
-              fontSize: newFontSize,
+              width: Math.max(40, Math.round(d.origW + lastDelta.dx)),
+              height: Math.max(20, Math.round(d.origH + lastDelta.dy)),
+              fontSize: d.origFontSize,
             };
             if (d.itemKind === 'bar') {
               updateBar(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
@@ -294,7 +288,7 @@ export function TipMemoBoxLayer({
         let renderDy = item.display.dy;
         let renderW = item.display.width;
         let renderH = item.display.height;
-        let renderFontSize = item.display.fontSize;
+        const renderFontSize = item.display.fontSize;
 
         if (isDragging && dragDelta) {
           if (dragRef.current!.mode === 'move') {
@@ -303,10 +297,6 @@ export function TipMemoBoxLayer({
           } else {
             renderW = Math.max(40, dragRef.current!.origW + dragDelta.dx);
             renderH = Math.max(20, dragRef.current!.origH + dragDelta.dy);
-            const scaleX = renderW / dragRef.current!.origW;
-            const scaleY = renderH / dragRef.current!.origH;
-            const scale = Math.sqrt(scaleX * scaleY);
-            renderFontSize = Math.max(6, Math.min(48, Math.round(dragRef.current!.origFontSize * scale)));
           }
         }
 
@@ -365,12 +355,12 @@ export function TipMemoBoxLayer({
               width={renderW - 6}
               height={renderH - 4}
               pointerEvents="none"
+              style={{ overflow: 'visible' }}
             >
               <div
                 style={{
                   fontSize: renderFontSize,
                   color: '#333',
-                  overflow: 'hidden',
                   wordBreak: 'break-word',
                   lineHeight: 1.3,
                   userSelect: 'none',
