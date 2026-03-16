@@ -182,3 +182,22 @@ export interface PartialScheduleExport {
 }
 
 export type ConflictResolution = 'add' | 'overwrite' | 'skip';
+
+export type LaneConflictResolution = 'keep-existing' | 'use-imported';
+
+export interface LaneConflict {
+  registryId: string;
+  templateLabel: string;
+  existingInfo: {
+    barCount: number;
+    milestoneCount: number;
+    heightPx: number;
+    pageNames: string[];
+  };
+  importedInfo: {
+    barCount: number;
+    milestoneCount: number;
+    heightPx: number;
+    pageNames: string[];
+  };
+}

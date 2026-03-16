@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine, TextBox, PartialScheduleExport, ConflictResolution } from '../types/schedule';
-import { remapPageIds, mergeLaneRegistry, applyRegistryIdRemap } from '../lib/import-utils';
+import type { ScheduleData, ScheduleBar, Milestone, SchedulePage, SwimLane, LaneTemplate, Connection, ScheduleLine, TextBox, PartialScheduleExport, ConflictResolution, LaneConflictResolution } from '../types/schedule';
+import { remapPageIds, mergeLaneRegistry, applyRegistryIdRemap, applyLaneConflictResolutions } from '../lib/import-utils';
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants';
 import { migrateData } from '../lib/migration';
 import { loadScheduleFromStorage, saveScheduleToStorage } from '../lib/storage';
@@ -82,7 +82,7 @@ interface ScheduleState {
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
   downloadPartial: (pageIds: string[]) => Promise<void>;
-  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>) => void;
+  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>, laneResolutions?: Map<string, LaneConflictResolution>) => void;
   // Undo/Redo
   undo: () => void;
   redo: () => void;
@@ -143,9 +143,10 @@ function syncLaneContentToSiblings(
       if (!sourceMsIds.has(ms.id)) removedIds.add(ms.id);
     }
 
-    // Deep copy bars/milestones from source
+    // Deep copy bars/milestones from source and sync height
     siblingLane.bars = JSON.parse(JSON.stringify(sourceLane.bars));
     siblingLane.milestones = JSON.parse(JSON.stringify(sourceLane.milestones));
+    siblingLane.heightPx = sourceLane.heightPx;
 
     // Cascade delete connections/scheduleLines referencing removed items
     if (removedIds.size > 0) {
@@ -310,6 +311,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             }
           }
         }
+        // Sync both source and destination lanes to siblings
+        syncLaneContentToSiblings(draft, pageId, fromLaneId);
+        syncLaneContentToSiblings(draft, pageId, toLaneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -478,6 +482,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             }
           }
         }
+        // Sync both source and destination lanes to siblings
+        syncLaneContentToSiblings(draft, pageId, fromLaneId);
+        syncLaneContentToSiblings(draft, pageId, toLaneId);
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -533,6 +540,13 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             ms.yOffsetInLane = Math.max(0, newHeight - msDisplayHeight);
           }
         }
+        // Sync height to sibling lanes
+        syncLaneContentToSiblings(draft, pageId, laneId);
+        // Also update registry template's defaultHeightPx
+        if (lane.registryId) {
+          const tmpl = draft.laneRegistry?.find((t) => t.id === lane.registryId);
+          if (tmpl) tmpl.defaultHeightPx = newHeight;
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
@@ -571,22 +585,26 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         if (draftTmpl && !draftTmpl.tags.includes(draftPage.name)) {
           draftTmpl.tags.push(draftPage.name);
         }
-        // Seed bars/milestones from existing sibling lane with same template
+        // Seed bars/milestones/height from existing sibling lane with same template
         let seedBars: ScheduleBar[] = [];
         let seedMilestones: Milestone[] = [];
+        let siblingHeightPx: number | null = null;
         for (const otherPage of draft.pages) {
           if (otherPage.id === pageId) continue;
           const sibling = otherPage.swimLanes.find((l) => l.registryId === templateId);
-          if (sibling && (sibling.bars.length > 0 || sibling.milestones.length > 0)) {
-            seedBars = JSON.parse(JSON.stringify(sibling.bars));
-            seedMilestones = JSON.parse(JSON.stringify(sibling.milestones));
+          if (sibling) {
+            siblingHeightPx = sibling.heightPx;
+            if (sibling.bars.length > 0 || sibling.milestones.length > 0) {
+              seedBars = JSON.parse(JSON.stringify(sibling.bars));
+              seedMilestones = JSON.parse(JSON.stringify(sibling.milestones));
+            }
             break;
           }
         }
         draftPage.swimLanes.push({
           id: `lane_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           label: tmpl.label,
-          heightPx: tmpl.defaultHeightPx,
+          heightPx: siblingHeightPx ?? tmpl.defaultHeightPx,
           bars: seedBars,
           milestones: seedMilestones,
           tags: draftTmpl ? [...draftTmpl.tags] : [],
@@ -1333,7 +1351,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     URL.revokeObjectURL(url);
   },
 
-  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>) => {
+  importDataAdditive: (partialData: PartialScheduleExport, resolutions: Map<string, ConflictResolution>, laneResolutions?: Map<string, LaneConflictResolution>) => {
     set((state) => {
       if (!state.data) return {};
 
@@ -1379,6 +1397,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             }
             draft.pages.push(page);
           }
+        }
+
+        if (laneResolutions && laneResolutions.size > 0) {
+          const importedPageIds = new Set(remappedPages.map((p) => p.id));
+          applyLaneConflictResolutions(draft, laneResolutions, importedPageIds);
         }
 
         draft.lastModified = new Date().toISOString();

@@ -1,4 +1,4 @@
-import type { SchedulePage, LaneTemplate } from '../types/schedule';
+import type { SchedulePage, LaneTemplate, ScheduleData, LaneConflict, LaneConflictResolution } from '../types/schedule';
 
 function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -130,6 +130,125 @@ export function applyRegistryIdRemap(
     for (const lane of page.swimLanes) {
       if (lane.registryId && registryIdRemap.has(lane.registryId)) {
         lane.registryId = registryIdRemap.get(lane.registryId)!;
+      }
+    }
+  }
+}
+
+/**
+ * Detect lane content conflicts between existing and imported pages.
+ * A conflict exists when the same registry template is used in both
+ * existing and imported pages but with different content (bars, milestones, height).
+ */
+export function detectLaneConflicts(
+  existingPages: SchedulePage[],
+  importedPages: SchedulePage[],
+  registryIdRemap: Map<string, string>,
+  existingRegistry: LaneTemplate[],
+): LaneConflict[] {
+  const existingRegistryIds = new Set(existingRegistry.map((t) => t.id));
+  const conflicts: LaneConflict[] = [];
+
+  for (const [oldId, newId] of registryIdRemap.entries()) {
+    // Only consider templates that already existed in the registry
+    if (!existingRegistryIds.has(newId)) continue;
+    // If oldId === newId, it was already in the registry (same project); skip
+    if (oldId === newId) continue;
+
+    // Find lanes in existing pages with this registryId
+    const existingLanes: { lane: typeof existingPages[0]['swimLanes'][0]; pageName: string }[] = [];
+    for (const page of existingPages) {
+      for (const lane of page.swimLanes) {
+        if (lane.registryId === newId) {
+          existingLanes.push({ lane, pageName: page.name });
+        }
+      }
+    }
+
+    // Find lanes in imported pages with the OLD registryId (before remap)
+    const importedLanes: { lane: typeof importedPages[0]['swimLanes'][0]; pageName: string }[] = [];
+    for (const page of importedPages) {
+      for (const lane of page.swimLanes) {
+        if (lane.registryId === oldId) {
+          importedLanes.push({ lane, pageName: page.name });
+        }
+      }
+    }
+
+    if (existingLanes.length === 0 || importedLanes.length === 0) continue;
+
+    // Compare content: use the first lane from each side as representative
+    const eLane = existingLanes[0].lane;
+    const iLane = importedLanes[0].lane;
+
+    const isDifferent =
+      eLane.bars.length !== iLane.bars.length ||
+      eLane.milestones.length !== iLane.milestones.length ||
+      eLane.heightPx !== iLane.heightPx;
+
+    if (isDifferent) {
+      const template = existingRegistry.find((t) => t.id === newId);
+      conflicts.push({
+        registryId: newId,
+        templateLabel: template?.label ?? newId,
+        existingInfo: {
+          barCount: eLane.bars.length,
+          milestoneCount: eLane.milestones.length,
+          heightPx: eLane.heightPx,
+          pageNames: [...new Set(existingLanes.map((l) => l.pageName))],
+        },
+        importedInfo: {
+          barCount: iLane.bars.length,
+          milestoneCount: iLane.milestones.length,
+          heightPx: iLane.heightPx,
+          pageNames: [...new Set(importedLanes.map((l) => l.pageName))],
+        },
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+/**
+ * Apply lane conflict resolutions to the draft data.
+ * - 'use-imported': Copy imported lane content to all existing lanes with the same registryId
+ * - 'keep-existing': Copy existing lane content to imported lanes
+ */
+export function applyLaneConflictResolutions(
+  draft: ScheduleData,
+  resolutions: Map<string, LaneConflictResolution>,
+  importedPageIds: Set<string>,
+): void {
+  for (const [registryId, resolution] of resolutions) {
+    const existingLanes: typeof draft.pages[0]['swimLanes'][0][] = [];
+    const importedLanes: typeof draft.pages[0]['swimLanes'][0][] = [];
+
+    for (const page of draft.pages) {
+      for (const lane of page.swimLanes) {
+        if (lane.registryId === registryId) {
+          if (importedPageIds.has(page.id)) {
+            importedLanes.push(lane);
+          } else {
+            existingLanes.push(lane);
+          }
+        }
+      }
+    }
+
+    if (resolution === 'use-imported' && importedLanes.length > 0) {
+      const source = importedLanes[0];
+      for (const target of existingLanes) {
+        target.bars = JSON.parse(JSON.stringify(source.bars));
+        target.milestones = JSON.parse(JSON.stringify(source.milestones));
+        target.heightPx = source.heightPx;
+      }
+    } else if (resolution === 'keep-existing' && existingLanes.length > 0) {
+      const source = existingLanes[0];
+      for (const target of importedLanes) {
+        target.bars = JSON.parse(JSON.stringify(source.bars));
+        target.milestones = JSON.parse(JSON.stringify(source.milestones));
+        target.heightPx = source.heightPx;
       }
     }
   }

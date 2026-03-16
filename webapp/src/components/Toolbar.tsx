@@ -9,10 +9,12 @@ import { HelpManual } from './HelpManual';
 import { FileMemoDialog } from './FileMemoDialog';
 import { ExportPageDialog } from './ExportPageDialog';
 import { ImportConflictDialog } from './ImportConflictDialog';
+import { LaneConflictDialog } from './LaneConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
 import { scrollToToday } from '../lib/scroll-utils';
 import { resolveTimeline } from '../lib/effective-timeline';
 import { exportToPng, exportToPdf } from '../lib/client-export';
+import { mergeLaneRegistry, detectLaneConflicts } from '../lib/import-utils';
 import {
   Home, Save, Undo2, Redo2, Plus, ChevronDown, Link2,
   MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
@@ -20,7 +22,7 @@ import {
   RectangleHorizontal, Star, Rows3, LayoutList,
   Upload, Download, Image, FileText, NotebookPen, Type,
 } from 'lucide-react';
-import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution } from '../types/schedule';
+import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution, LaneConflict, LaneConflictResolution } from '../types/schedule';
 
 export function Toolbar() {
   const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive } = useScheduleStore();
@@ -35,6 +37,9 @@ export function Toolbar() {
     data: PartialScheduleExport;
     conflicts: { pageName: string }[];
     nonConflicts: { name: string }[];
+    phase: 'page-conflicts' | 'lane-conflicts';
+    pageResolutions?: Map<string, ConflictResolution>;
+    laneConflicts?: LaneConflict[];
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,9 +118,25 @@ export function Toolbar() {
             }
           }
           if (conflicts.length > 0) {
-            setPendingPartialImport({ data: partialData, conflicts, nonConflicts });
+            setPendingPartialImport({ data: partialData, conflicts, nonConflicts, phase: 'page-conflicts' });
           } else {
-            importDataAdditive(partialData, new Map());
+            // No page conflicts — check for lane conflicts
+            const { registryIdRemap } = mergeLaneRegistry(
+              data?.laneRegistry ?? [],
+              partialData.laneRegistry,
+              partialData.pages,
+            );
+            const laneConflicts = detectLaneConflicts(
+              data?.pages ?? [],
+              partialData.pages,
+              registryIdRemap,
+              data?.laneRegistry ?? [],
+            );
+            if (laneConflicts.length > 0) {
+              setPendingPartialImport({ data: partialData, conflicts, nonConflicts, phase: 'lane-conflicts', laneConflicts });
+            } else {
+              importDataAdditive(partialData, new Map());
+            }
           }
         } else {
           // Full import
@@ -135,10 +156,58 @@ export function Toolbar() {
   };
 
   const handleConflictResolved = (resolutions: Map<string, ConflictResolution>) => {
-    if (pendingPartialImport) {
+    if (!pendingPartialImport) return;
+
+    // Filter out skipped pages for lane conflict detection
+    const skippedNames = new Set<string>();
+    const overwrittenNames = new Set<string>();
+    for (const [name, res] of resolutions) {
+      if (res === 'skip') skippedNames.add(name);
+      if (res === 'overwrite') overwrittenNames.add(name);
+    }
+
+    // Existing pages that won't be overwritten
+    const existingPagesForDetection = (data?.pages ?? []).filter(
+      (p) => !overwrittenNames.has(p.name),
+    );
+    // Imported pages that aren't skipped
+    const importedPagesForDetection = pendingPartialImport.data.pages.filter(
+      (p) => !skippedNames.has(p.name),
+    );
+
+    const { registryIdRemap } = mergeLaneRegistry(
+      data?.laneRegistry ?? [],
+      pendingPartialImport.data.laneRegistry,
+      pendingPartialImport.data.pages,
+    );
+    const laneConflicts = detectLaneConflicts(
+      existingPagesForDetection,
+      importedPagesForDetection,
+      registryIdRemap,
+      data?.laneRegistry ?? [],
+    );
+
+    if (laneConflicts.length > 0) {
+      setPendingPartialImport({
+        ...pendingPartialImport,
+        phase: 'lane-conflicts',
+        pageResolutions: resolutions,
+        laneConflicts,
+      });
+    } else {
       importDataAdditive(pendingPartialImport.data, resolutions);
       setPendingPartialImport(null);
     }
+  };
+
+  const handleLaneConflictResolved = (laneResolutions: Map<string, LaneConflictResolution>) => {
+    if (!pendingPartialImport) return;
+    importDataAdditive(
+      pendingPartialImport.data,
+      pendingPartialImport.pageResolutions ?? new Map(),
+      laneResolutions,
+    );
+    setPendingPartialImport(null);
   };
 
   return (
@@ -329,13 +398,20 @@ export function Toolbar() {
         <FileMemoDialog onClose={() => setShowFileMemo(false)} />
       )}
 
-      {pendingPartialImport && (
+      {pendingPartialImport?.phase === 'page-conflicts' && (
         <ImportConflictDialog
           conflicts={pendingPartialImport.conflicts}
           nonConflicts={pendingPartialImport.data.pages.filter(
             (p) => !pendingPartialImport.conflicts.some((c) => c.pageName === p.name)
           )}
           onConfirm={handleConflictResolved}
+          onClose={() => setPendingPartialImport(null)}
+        />
+      )}
+      {pendingPartialImport?.phase === 'lane-conflicts' && pendingPartialImport.laneConflicts && (
+        <LaneConflictDialog
+          conflicts={pendingPartialImport.laneConflicts}
+          onConfirm={handleLaneConflictResolved}
           onClose={() => setPendingPartialImport(null)}
         />
       )}
