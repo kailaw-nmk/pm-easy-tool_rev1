@@ -494,11 +494,16 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     if (!lane) return;
     const ms = lane.milestones.find((m) => m.id === msId);
     if (!ms) return;
+    const yShift = 20;
     const newMs: Milestone = {
       ...JSON.parse(JSON.stringify(ms)),
       id: `ms_${Date.now()}`,
-      yOffsetInLane: ms.yOffsetInLane + 20,
+      yOffsetInLane: ms.yOffsetInLane + yShift,
     };
+    // Shift star Y position to maintain relative position with text
+    if (newMs.starYOffset != null) {
+      newMs.starYOffset = newMs.starYOffset + yShift;
+    }
     get().addMilestone(pageId, laneId, newMs);
   },
 
