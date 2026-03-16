@@ -78,6 +78,7 @@ interface ScheduleState {
   deleteTextBox: (pageId: string, textBoxId: string) => void;
   // Memo
   updateMemo: (memo: string) => void;
+  resetItemPositions: (pageId: string) => void;
   // Import/Export
   importData: (data: ScheduleData) => void;
   downloadData: () => Promise<void>;
@@ -1211,6 +1212,33 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const historyUpdate = pushHistory(state);
       const newData = produce(state.data, (draft) => {
         draft.memo = memo || undefined;
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  resetItemPositions: (pageId) => {
+    set((state) => {
+      if (!state.data) return {};
+      const page = state.data.pages.find((p) => p.id === pageId);
+      const hasOffsets = page?.swimLanes.some(l =>
+        l.milestones.some(ms => (ms.xOffsetPx ?? 0) !== 0 || ms.starXOffset != null || ms.starYOffset != null)
+      );
+      if (!hasOffsets) return {};
+
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const draftPage = draft.pages.find((p) => p.id === pageId);
+        if (!draftPage) return;
+        for (const lane of draftPage.swimLanes) {
+          for (const ms of lane.milestones) {
+            ms.xOffsetPx = 0;
+            delete ms.starXOffset;
+            delete ms.starYOffset;
+          }
+        }
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);

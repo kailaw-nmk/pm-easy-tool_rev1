@@ -20,12 +20,12 @@ import {
   MousePointerClick, MessageSquare, StickyNote, CalendarCheck,
   Settings, HelpCircle, Moon, Sun, MoreHorizontal,
   RectangleHorizontal, Star, Rows3, LayoutList,
-  Upload, Download, Image, FileText, NotebookPen, Type,
+  Upload, Download, Image, FileText, NotebookPen, Type, Crosshair,
 } from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution, LaneConflict, LaneConflictResolution } from '../types/schedule';
 
 export function Toolbar() {
-  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive } = useScheduleStore();
+  const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive, resetItemPositions } = useScheduleStore();
   const { showTooltips, showMemos, toggleTooltips, toggleMemos, placementMode, setPlacementMode, zoomLevel, setZoomLevel, displayMode, setDisplayMode, themeMode, toggleTheme, setShowHome } = useUIStore();
   const [addPanel, setAddPanel] = useState<'bar' | 'milestone' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -322,6 +322,15 @@ export function Toolbar() {
         {/* Today */}
         <button className="icon-btn" onClick={handleScrollToToday} title="今日の位置にスクロール">
           <CalendarCheck size={16} />
+        </button>
+
+        {/* Set — snap milestones to date positions */}
+        <button
+          className="icon-btn"
+          onClick={() => resetItemPositions(currentPageId)}
+          title="マイルストーンを日付位置にスナップ"
+        >
+          <Crosshair size={16} /> Set
         </button>
 
         <div className="separator" />
