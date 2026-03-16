@@ -221,6 +221,7 @@ export function TextBoxLayer({
                   fontSize: fontSizeTextBox,
                   color: tb.textColor,
                   wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
                   lineHeight: 1.3,
                   userSelect: 'none',
                 }}

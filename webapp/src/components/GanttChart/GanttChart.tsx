@@ -40,7 +40,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, duplicateMilestone, removeLane, reorderLane, moveLane, updateLaneHeight, updateLaneLabel, updateBar, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, updateScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -1077,6 +1077,21 @@ export function GanttChart() {
             {contextMenu.type === 'scheduleLine' && (
               <>
                 <button onClick={() => { setEditScheduleLine(contextMenu.id); setContextMenu(null); }}>編集...</button>
+                <button onClick={() => {
+                  const sl = page?.scheduleLines?.find((l) => l.id === contextMenu.id);
+                  const color = prompt('色を入力 (例: #ff0000):', sl?.color ?? '#3b82f6');
+                  if (color !== null) updateScheduleLine(currentPageId, contextMenu.id, { color });
+                  setContextMenu(null);
+                }}>色変更</button>
+                <button onClick={() => {
+                  const sl = page?.scheduleLines?.find((l) => l.id === contextMenu.id);
+                  const input = prompt('線の太さ (px):', String(sl?.strokeWidth ?? 1.5));
+                  if (input !== null) {
+                    const val = parseFloat(input);
+                    if (!isNaN(val) && val > 0) updateScheduleLine(currentPageId, contextMenu.id, { strokeWidth: val });
+                  }
+                  setContextMenu(null);
+                }}>線の太さ変更</button>
               </>
             )}
             {contextMenu.type === 'textbox' && (

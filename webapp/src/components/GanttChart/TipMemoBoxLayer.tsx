@@ -364,11 +364,12 @@ export function TipMemoBoxLayer({
                   fontSize: renderFontSize,
                   color: '#333',
                   wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
                   lineHeight: 1.3,
                   userSelect: 'none',
                 }}
               >
-                {isTooltip ? '' : ''}{item.text}
+                {item.text}
               </div>
             </foreignObject>
 
