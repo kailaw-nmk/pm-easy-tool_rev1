@@ -320,11 +320,6 @@ export function MilestoneComponent({
         starXOffset: starDragRef.current.origXOff + dx,
         starYOffset: starDragRef.current.origYOff + dy,
       };
-      // テキスト側の位置も同じ delta を加算して同期
-      if (milestone.xOffsetPx != null) {
-        updates.xOffsetPx = milestone.xOffsetPx + dx;
-      }
-      updates.yOffsetInLane = Math.max(0, Math.round(milestone.yOffsetInLane + dy));
       updateMilestone(pageId, laneId, milestone.id, updates);
       setStarDragOffset({ dx: 0, dy: 0 });
       starDragRef.current = null;
