@@ -5,6 +5,7 @@ import { useUIStore } from '../../hooks/useUIStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { TimelineHeader } from './TimelineHeader';
 import { SwimLaneComponent } from './SwimLane';
+import { LaneHeaderOverlay } from './LaneHeaderOverlay';
 import { TodayLine } from './TodayLine';
 import { ConnectionLayer } from './ConnectionLayer';
 import { SnapPointOverlay } from './SnapPointOverlay';
@@ -17,12 +18,12 @@ import { ScheduleLineEditorDialog } from '../ScheduleLineEditor';
 import { TextBoxLayer } from './TextBoxLayer';
 import { TipMemoBoxLayer } from './TipMemoBoxLayer';
 import { TextBoxEditorDialog } from '../TextBoxEditor';
-import { monthsBetween, xToMonth } from '../../lib/date-utils';
+import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay, xToMonth } from '../../lib/date-utils';
 import { dayZoomTotalWidth, getHeaderHeight } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
 import { resolveConnections, getItemRect } from '../../lib/connection-utils';
 import { generateSnapPoints, findNearestSnapPoint, type SnapPoint } from '../../lib/snap-points';
-import type { PositionContext } from '../../lib/position';
+import { itemX, xToDate, type PositionContext } from '../../lib/position';
 
 interface ContextMenuState {
   x: number;
@@ -74,6 +75,7 @@ export function GanttChart() {
     laneHeight: number;
     originalIndex: number;
   } | null>(null);
+  const [multiDragOffset, setMultiDragOffset] = useState<{ dx: number; dy: number } | null>(null);
 
   const page = data?.pages.find((p) => p.id === currentPageId);
   const rawTimeline = page?.timeline ?? data?.timeline;
@@ -418,6 +420,56 @@ export function GanttChart() {
     select({ type: 'lane', id: laneId, laneId }, multi);
   }, [select]);
 
+  // Multi-bar drag: set of selected bar IDs (2+ bars selected)
+  const multiDragBarIds = useMemo(() => {
+    const barItems = selected.filter((s) => s.type === 'bar');
+    if (barItems.length < 2) return undefined;
+    return new Set(barItems.map((s) => s.id));
+  }, [selected]);
+
+  const handleMultiDragMove = useCallback((dx: number, dy: number) => {
+    setMultiDragOffset({ dx, dy });
+  }, []);
+
+  const handleMultiDragEnd = useCallback((dx: number, dy: number) => {
+    if (!page || !timeline) {
+      setMultiDragOffset(null);
+      return;
+    }
+    const barItems = selected.filter((s) => s.type === 'bar');
+    const ctx: PositionContext = { timeline, headerWidth, zoomLevel };
+    for (const item of barItems) {
+      const lane = page.swimLanes.find((l) => l.id === item.laneId);
+      const bar = lane?.bars.find((b) => b.id === item.id);
+      if (!bar || !lane) continue;
+
+      const barBaseX = itemX(bar.startMonth, ctx);
+      const newStart = xToDate(barBaseX + dx, ctx);
+      const updates: Partial<import('../../types/schedule').ScheduleBar> = {};
+
+      if (zoomLevel === 'day') {
+        const durDays = daysBetween2(bar.startMonth, bar.endMonth);
+        const s = parseDate2(newStart);
+        const startD = new Date(s.year, s.month - 1, s.day);
+        const endD = new Date(startD.getTime() + durDays * 24 * 60 * 60 * 1000);
+        updates.startMonth = newStart;
+        updates.endMonth = formatYearMonthDay(endD.getFullYear(), endD.getMonth() + 1, endD.getDate());
+      } else {
+        const dur = monthsBetween(bar.startMonth.substring(0, 7), bar.endMonth.substring(0, 7));
+        const sp = parseYearMonth(newStart.substring(0, 7));
+        const endTotal = sp.year * 12 + sp.month - 1 + dur;
+        const newEnd = formatYearMonth(Math.floor(endTotal / 12), (endTotal % 12) + 1);
+        updates.startMonth = newStart;
+        updates.endMonth = newEnd;
+      }
+      updates.yOffsetInLane = Math.round(
+        Math.max(0, Math.min(lane.heightPx - bar.heightPx, bar.yOffsetInLane + dy))
+      );
+      updateBar(currentPageId, item.laneId, item.id, updates);
+    }
+    setMultiDragOffset(null);
+  }, [page, timeline, selected, headerWidth, zoomLevel, currentPageId, updateBar]);
+
   // Delete key handler for selected items
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -657,6 +709,24 @@ export function GanttChart() {
             <TimelineHeader timeline={timeline} headerWidth={headerWidth} zoomLevel={zoomLevel} fontScale={fontScale} />
             <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={headerHeight} zoomLevel={zoomLevel} region="header" />
           </svg>
+          {/* Corner overlay: covers the header×laneHeader intersection */}
+          <div
+            className="header-corner-overlay"
+            style={{
+              position: 'sticky',
+              left: 0,
+              width: headerWidth,
+              height: headerHeight,
+              marginTop: -headerHeight,
+              zIndex: 25,
+              pointerEvents: 'none',
+              lineHeight: 0,
+            }}
+          >
+            <svg width={headerWidth} height={headerHeight} style={{ display: 'block' }}>
+              <rect fill={tc.chartBg} width={headerWidth} height={headerHeight} />
+            </svg>
+          </div>
         </div>
 
         {/* Body SVG */}
@@ -736,12 +806,12 @@ export function GanttChart() {
                 onMilestoneDoubleClick={(msId, laneId) => setEditMs({ msId, laneId })}
                 onContextMenu={handleContextMenu}
                 onItemClick={handleItemClick}
-                onLaneContextMenu={handleLaneContextMenu}
-                onLaneClick={handleLaneClick}
-                onLaneDragStart={handleLaneDragStart}
-                isLaneSelected={selectedIds.has(lane.id)}
                 onTooltipShow={handleTooltipShow}
                 onTooltipHide={handleTooltipHide}
+                multiDragOffset={multiDragOffset}
+                multiDragBarIds={multiDragBarIds}
+                onMultiDragMove={handleMultiDragMove}
+                onMultiDragEnd={handleMultiDragEnd}
               />
             );
           })}
@@ -827,10 +897,10 @@ export function GanttChart() {
             }
             return (
               <>
-                {/* Ghost lane */}
+                {/* Ghost lane (content area only; header ghost is in LaneHeaderOverlay) */}
                 <rect
-                  x={0} y={origOffset.y + dy}
-                  width={totalWidth} height={laneDrag.laneHeight}
+                  x={headerWidth} y={origOffset.y + dy}
+                  width={totalWidth - headerWidth} height={laneDrag.laneHeight}
                   fill={tc.accentLight} opacity={0.4}
                   stroke={tc.selectionStroke} strokeWidth={2}
                   pointerEvents="none"
@@ -853,6 +923,20 @@ export function GanttChart() {
             <TodayLine timeline={timeline} headerWidth={headerWidth} chartHeight={bodyHeight} zoomLevel={zoomLevel} region="body" />
           </g>
         </svg>
+
+        {/* Lane header overlay: sticky left for horizontal scroll */}
+        <LaneHeaderOverlay
+          lanes={effectiveLanes}
+          laneOffsets={laneOffsets}
+          headerWidth={headerWidth}
+          bodyHeight={bodyHeight}
+          fontScale={fontScale}
+          selectedIds={selectedIds}
+          laneDrag={laneDrag}
+          onLaneContextMenu={handleLaneContextMenu}
+          onLaneClick={handleLaneClick}
+          onLaneDragStart={handleLaneDragStart}
+        />
       </div>
 
       {/* Tooltip overlay */}

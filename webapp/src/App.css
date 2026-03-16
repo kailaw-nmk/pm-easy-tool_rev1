@@ -173,7 +173,9 @@ body,
 }
 
 .gantt-header-sticky svg,
-svg.gantt-chart {
+svg.gantt-chart,
+.lane-header-overlay svg,
+.header-corner-overlay svg {
   display: block;
 }
 

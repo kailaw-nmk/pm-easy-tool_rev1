@@ -25,6 +25,11 @@ interface Props {
   onClick?: (e: React.MouseEvent) => void;
   onTooltipShow?: (text: string, x: number, y: number) => void;
   onTooltipHide?: () => void;
+  // Multi-bar drag support
+  multiDragOffset?: { dx: number; dy: number } | null;
+  onMultiDragMove?: (dx: number, dy: number) => void;
+  onMultiDragEnd?: (dx: number, dy: number) => void;
+  isMultiSelected?: boolean;
 }
 
 type DragType = 'move' | 'resize-left' | 'resize-right' | 'resize-bottom' | 'resize-corner';
@@ -37,6 +42,7 @@ export function ScheduleBarComponent({
   bar, laneId, pageId, laneY, timeline, headerWidth, zoomLevel, fontScale = 1.0, laneHeight,
   isSelected, showMemos, onDoubleClick, onContextMenu, onClick,
   onTooltipShow, onTooltipHide,
+  multiDragOffset, onMultiDragMove, onMultiDragEnd, isMultiSelected,
 }: Props) {
   const updateBar = useScheduleStore((s) => s.updateBar);
   const baseFontSizeBarText = useUIStore((s) => s.fontSizeBarText);
@@ -55,6 +61,7 @@ export function ScheduleBarComponent({
     origYOffset: number;
     origHeightPx: number;
     hasMoved: boolean;
+    axisLock: 'none' | 'h' | 'v';
   } | null>(null);
 
   const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0, dw: 0, dh: 0 });
@@ -65,9 +72,15 @@ export function ScheduleBarComponent({
   const baseY = laneY + bar.yOffsetInLane;
   const effectiveBaseWidth = Math.max(baseWidth, timeline.monthWidthPx);
 
+  // For follower bars (not the one being dragged), apply multiDragOffset
+  // The dragged bar itself uses local dragOffset; followers have dragOffset={0,0,0,0}
+  const isFollower = multiDragOffset && (dragOffset.dx === 0 && dragOffset.dy === 0 && dragOffset.dw === 0 && dragOffset.dh === 0);
+  const moveDx = isFollower ? multiDragOffset.dx : dragOffset.dx;
+  const moveDy = isFollower ? multiDragOffset.dy : dragOffset.dy;
+
   // Render coordinates (with drag offset applied)
-  const renderX = baseX + dragOffset.dx;
-  const renderY = baseY + dragOffset.dy;
+  const renderX = baseX + moveDx;
+  const renderY = baseY + moveDy;
   const renderWidth = Math.max(MIN_BAR_HEIGHT, effectiveBaseWidth + dragOffset.dw);
   const renderHeight = Math.max(MIN_BAR_HEIGHT, bar.heightPx + dragOffset.dh);
 
@@ -85,13 +98,14 @@ export function ScheduleBarComponent({
       origYOffset: bar.yOffsetInLane,
       origHeightPx: bar.heightPx,
       hasMoved: false,
+      axisLock: 'none',
     };
   }, [bar.startMonth, bar.endMonth, bar.yOffsetInLane, bar.heightPx]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
+    let dx = e.clientX - dragRef.current.startX;
+    let dy = e.clientY - dragRef.current.startY;
 
     if (!dragRef.current.hasMoved && Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
       dragRef.current.hasMoved = true;
@@ -99,9 +113,30 @@ export function ScheduleBarComponent({
     if (!dragRef.current.hasMoved) return;
 
     const { type } = dragRef.current;
+
+    // Shift key: axis lock for move operations
+    if (type === 'move' && e.shiftKey) {
+      if (dragRef.current.axisLock === 'none') {
+        // Determine axis based on initial dominant direction
+        dragRef.current.axisLock = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+      }
+      if (dragRef.current.axisLock === 'h') {
+        dy = 0;
+      } else {
+        dx = 0;
+      }
+    } else if (type === 'move') {
+      // Reset axis lock when shift is released
+      dragRef.current.axisLock = 'none';
+    }
+
     switch (type) {
       case 'move':
         setDragOffset({ dx, dy, dw: 0, dh: 0 });
+        // Notify parent for multi-bar drag
+        if (isMultiSelected && onMultiDragMove) {
+          onMultiDragMove(dx, dy);
+        }
         break;
       case 'resize-left':
         setDragOffset({ dx, dy: 0, dw: -dx, dh: 0 });
@@ -116,7 +151,7 @@ export function ScheduleBarComponent({
         setDragOffset({ dx: 0, dy: 0, dw: dx, dh: dy });
         break;
     }
-  }, []);
+  }, [isMultiSelected, onMultiDragMove]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     const drag = dragRef.current;
@@ -128,16 +163,31 @@ export function ScheduleBarComponent({
       return;
     }
 
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
+    let dx = e.clientX - drag.startX;
+    let dy = e.clientY - drag.startY;
+
+    // Apply axis lock on final position
+    if (drag.type === 'move' && drag.axisLock === 'h') {
+      dy = 0;
+    } else if (drag.type === 'move' && drag.axisLock === 'v') {
+      dx = 0;
+    }
+
     const ctx: PositionContext = { timeline, headerWidth, zoomLevel };
     const updates: Partial<ScheduleBar> = {};
 
     switch (drag.type) {
       case 'move': {
+        // If multi-selected, delegate to parent for batch update
+        if (isMultiSelected && onMultiDragEnd) {
+          onMultiDragEnd(dx, dy);
+          setDragOffset({ dx: 0, dy: 0, dw: 0, dh: 0 });
+          dragRef.current = null;
+          return;
+        }
+
         const newStart = xToDate(baseX + dx, ctx);
         if (zoomLevel === 'day') {
-          // Day zoom: preserve duration in days
           const durDays = daysBetween2(drag.origStartMonth, drag.origEndMonth);
           const s = parseDate2(newStart);
           const startD = new Date(s.year, s.month - 1, s.day);
@@ -145,7 +195,6 @@ export function ScheduleBarComponent({
           updates.startMonth = newStart;
           updates.endMonth = formatYearMonthDay(endD.getFullYear(), endD.getMonth() + 1, endD.getDate());
         } else {
-          // Non-day zoom: preserve duration in months
           const dur = monthsBetween(drag.origStartMonth.substring(0, 7), drag.origEndMonth.substring(0, 7));
           const sp = parseYearMonth(newStart.substring(0, 7));
           const endTotal = sp.year * 12 + sp.month - 1 + dur;
@@ -196,7 +245,7 @@ export function ScheduleBarComponent({
 
     setDragOffset({ dx: 0, dy: 0, dw: 0, dh: 0 });
     dragRef.current = null;
-  }, [bar.id, baseX, effectiveBaseWidth, headerWidth, laneHeight, laneId, onClick, pageId, timeline, updateBar, zoomLevel]);
+  }, [bar.id, baseX, effectiveBaseWidth, headerWidth, laneHeight, laneId, onClick, pageId, timeline, updateBar, zoomLevel, isMultiSelected, onMultiDragEnd]);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     if (bar.tooltip && onTooltipShow) {
