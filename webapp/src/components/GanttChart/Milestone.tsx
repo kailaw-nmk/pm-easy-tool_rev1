@@ -206,10 +206,18 @@ export function MilestoneComponent({
       }
       const dx = e.clientX - textDragRef.current.startX;
       const dy = e.clientY - textDragRef.current.startY;
-      updateMilestone(pageId, laneId, milestone.id, {
+      const updates: Partial<Milestone> = {
         xOffsetPx: textDragRef.current.origXOff + dx,
         yOffsetInLane: Math.max(0, Math.round(textDragRef.current.origYOff + dy)),
-      });
+      };
+      // 星の位置が明示設定されている場合、同じ delta を加算して同期
+      if (milestone.starXOffset != null) {
+        updates.starXOffset = milestone.starXOffset + dx;
+      }
+      if (milestone.starYOffset != null) {
+        updates.starYOffset = milestone.starYOffset + dy;
+      }
+      updateMilestone(pageId, laneId, milestone.id, updates);
       setTextDragOffset({ dx: 0, dy: 0 });
       textDragRef.current = null;
       return;
@@ -237,10 +245,16 @@ export function MilestoneComponent({
       }
       const dx = e.clientX - starDragRef.current.startX;
       const dy = e.clientY - starDragRef.current.startY;
-      updateMilestone(pageId, laneId, milestone.id, {
+      const updates: Partial<Milestone> = {
         starXOffset: starDragRef.current.origXOff + dx,
         starYOffset: starDragRef.current.origYOff + dy,
-      });
+      };
+      // テキスト側の位置も同じ delta を加算して同期
+      if (milestone.xOffsetPx != null) {
+        updates.xOffsetPx = milestone.xOffsetPx + dx;
+      }
+      updates.yOffsetInLane = Math.max(0, Math.round(milestone.yOffsetInLane + dy));
+      updateMilestone(pageId, laneId, milestone.id, updates);
       setStarDragOffset({ dx: 0, dy: 0 });
       starDragRef.current = null;
       return;
@@ -380,17 +394,6 @@ export function MilestoneComponent({
         </>
       )}
 
-      {/* Memo icon */}
-      {showMemos && milestone.memo && (
-        <text
-          x={hasText ? textX + textW - 10 : starCX + starHitSize / 2 - 10}
-          y={hasText ? textY + 8 : starCY - starHitSize / 2 + 8}
-          fontSize={8}
-          fill={tc.memoIcon}
-          pointerEvents="none"
-          style={{ userSelect: 'none' }}
-        >📝</text>
-      )}
     </g>
   );
 }

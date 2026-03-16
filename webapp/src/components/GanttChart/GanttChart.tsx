@@ -14,6 +14,9 @@ import { LaneTagEditor } from '../LaneTagEditor';
 import { ConnectionEditorDialog } from '../ConnectionEditor';
 import { ScheduleLineLayer } from './ScheduleLineLayer';
 import { ScheduleLineEditorDialog } from '../ScheduleLineEditor';
+import { TextBoxLayer } from './TextBoxLayer';
+import { TipMemoBoxLayer } from './TipMemoBoxLayer';
+import { TextBoxEditorDialog } from '../TextBoxEditor';
 import { monthsBetween, xToMonth } from '../../lib/date-utils';
 import { dayZoomTotalWidth, getHeaderHeight } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
@@ -24,7 +27,7 @@ import type { PositionContext } from '../../lib/position';
 interface ContextMenuState {
   x: number;
   y: number;
-  type: 'bar' | 'milestone' | 'lane' | 'connection' | 'scheduleLine';
+  type: 'bar' | 'milestone' | 'lane' | 'connection' | 'scheduleLine' | 'textbox';
   id: string;
   laneId: string;
 }
@@ -36,7 +39,7 @@ interface TooltipState {
 }
 
 export function GanttChart() {
-  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine } = useScheduleStore();
+  const { data, currentPageId, deleteBar, deleteMilestone, duplicateBar, removeLane, reorderLane, moveLane, updateLaneHeight, addBar, addMilestone, addConnection, deleteConnection, updateConnection, addScheduleLine, deleteScheduleLine, addTextBox, updateTextBox, deleteTextBox } = useScheduleStore();
   const { selected, select, clearSelection } = useSelectionStore();
   const { showTooltips, showMemos, placementMode, setPlacementMode, zoomLevel, displayMode, containerWidth, containerHeight, connectFrom, setConnectFrom, clearConnectFrom } = useUIStore();
   const tc = useThemeColors();
@@ -51,6 +54,8 @@ export function GanttChart() {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [contextMenuPos, setContextMenuPos] = useState<{ left: number; top: number } | null>(null);
   const [editScheduleLine, setEditScheduleLine] = useState<string | null>(null);
+  const [selectedTextBoxId, setSelectedTextBoxId] = useState<string | null>(null);
+  const [editTextBox, setEditTextBox] = useState<string | null>(null);
   const [connectHovered, setConnectHovered] = useState<{ itemId: string; laneId: string } | null>(null);
   const [connectMousePos, setConnectMousePos] = useState<{ x: number; y: number } | null>(null);
   const [nearestSnap, setNearestSnap] = useState<SnapPoint | null>(null);
@@ -195,9 +200,12 @@ export function GanttChart() {
     } else if (contextMenu.type === 'scheduleLine') {
       deleteScheduleLine(currentPageId, contextMenu.id);
       setSelectedScheduleLineId(null);
+    } else if (contextMenu.type === 'textbox') {
+      deleteTextBox(currentPageId, contextMenu.id);
+      setSelectedTextBoxId(null);
     }
     setContextMenu(null);
-  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine]);
+  }, [contextMenu, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine, deleteTextBox]);
 
   const handleConnectionClick = useCallback((e: React.MouseEvent, connectionId: string) => {
     e.stopPropagation();
@@ -308,6 +316,25 @@ export function GanttChart() {
       pt.y = e.clientY;
       const svgPt = pt.matrixTransform(svg.getScreenCTM()!.inverse());
 
+      // TextBox placement (doesn't require a lane target)
+      if (placementMode === 'textbox') {
+        addTextBox(currentPageId, {
+          id: `tb_${Date.now()}`,
+          text: 'テキスト',
+          x: Math.round(svgPt.x),
+          y: Math.round(svgPt.y),
+          width: 150,
+          height: 60,
+          fontSize: 12,
+          textColor: '#333333',
+          fillColor: '#ffffffcc',
+          borderColor: '#888888',
+          borderWidth: 1,
+        });
+        setPlacementMode('none');
+        return;
+      }
+
       // Determine which lane was clicked (0-based Y)
       let targetLaneId: string | null = null;
       let laneY = 0;
@@ -352,8 +379,9 @@ export function GanttChart() {
       clearSelection();
       setSelectedConnectionId(null);
       setSelectedScheduleLineId(null);
+      setSelectedTextBoxId(null);
     }
-  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection, effectiveLanes]);
+  }, [closeContextMenu, clearSelection, placementMode, page, timeline, headerWidth, currentPageId, addBar, addMilestone, addTextBox, setPlacementMode, nearestSnap, connectHovered, connectFrom, setConnectFrom, clearConnectFrom, addConnection, effectiveLanes]);
 
   const handleItemClick = useCallback((e: React.MouseEvent, type: 'bar' | 'milestone', id: string, laneId: string) => {
     e.stopPropagation();
@@ -372,6 +400,12 @@ export function GanttChart() {
       if (e.key === 'Delete') {
         const tag = (e.target as HTMLElement).tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        if (selectedTextBoxId) {
+          deleteTextBox(currentPageId, selectedTextBoxId);
+          setSelectedTextBoxId(null);
+          return;
+        }
 
         if (selectedScheduleLineId) {
           deleteScheduleLine(currentPageId, selectedScheduleLineId);
@@ -401,7 +435,7 @@ export function GanttChart() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, selectedConnectionId, selectedScheduleLineId, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine, clearSelection]);
+  }, [selected, selectedConnectionId, selectedScheduleLineId, selectedTextBoxId, currentPageId, deleteBar, deleteMilestone, removeLane, deleteConnection, deleteScheduleLine, deleteTextBox, clearSelection]);
 
   const handleTooltipShow = useCallback((text: string, x: number, y: number) => {
     if (showTooltips) {
@@ -658,6 +692,46 @@ export function GanttChart() {
             />
           </g>
 
+          {/* TextBox layer */}
+          {page.textBoxes && page.textBoxes.length > 0 && (
+            <g clipPath="url(#content-area-clip)">
+              <TextBoxLayer
+                textBoxes={page.textBoxes}
+                page={page}
+                laneOffsets={laneOffsets}
+                posCtx={{ timeline, headerWidth, zoomLevel }}
+                selectedTextBoxId={selectedTextBoxId}
+                onSelect={(id) => {
+                  clearSelection();
+                  setSelectedConnectionId(null);
+                  setSelectedScheduleLineId(null);
+                  setSelectedTextBoxId(id);
+                }}
+                onDoubleClick={(id) => setEditTextBox(id)}
+                onContextMenu={(e, id) => {
+                  setSelectedTextBoxId(id);
+                  setContextMenu({ x: e.clientX, y: e.clientY, type: 'textbox', id, laneId: '' });
+                }}
+                onUpdate={(id, updates) => updateTextBox(currentPageId, id, updates)}
+              />
+            </g>
+          )}
+
+          {/* TipMemo boxes */}
+          {(showTooltips || showMemos) && (
+            <g clipPath="url(#content-area-clip)">
+              <TipMemoBoxLayer
+                page={{ ...page, swimLanes: effectiveLanes }}
+                laneOffsets={laneOffsets}
+                posCtx={{ timeline, headerWidth, zoomLevel }}
+                showTooltips={showTooltips}
+                showMemos={showMemos}
+                onEditBar={(barId, laneId) => setEditBar({ barId, laneId })}
+                onEditMilestone={(msId, laneId) => setEditMs({ msId, laneId })}
+              />
+            </g>
+          )}
+
           {/* Swim lanes (y starts from 0) */}
           {effectiveLanes.map((lane, i) => {
             const offset = laneOffsets[i];
@@ -843,6 +917,11 @@ export function GanttChart() {
                 <button onClick={() => { setEditScheduleLine(contextMenu.id); setContextMenu(null); }}>編集...</button>
               </>
             )}
+            {contextMenu.type === 'textbox' && (
+              <>
+                <button onClick={() => { setEditTextBox(contextMenu.id); setContextMenu(null); }}>編集...</button>
+              </>
+            )}
             {contextMenu.type === 'lane' && (
               <>
                 <button onClick={handleLaneHeightPrompt}>高さ設定...</button>
@@ -892,6 +971,13 @@ export function GanttChart() {
           pageId={currentPageId}
           lineId={editScheduleLine}
           onClose={() => setEditScheduleLine(null)}
+        />
+      )}
+      {editTextBox && (
+        <TextBoxEditorDialog
+          pageId={currentPageId}
+          textBoxId={editTextBox}
+          onClose={() => setEditTextBox(null)}
         />
       )}
     </div>

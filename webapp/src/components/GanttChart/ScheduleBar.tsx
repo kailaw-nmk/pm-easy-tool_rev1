@@ -265,20 +265,6 @@ export function ScheduleBarComponent({
           : bar.label}
       </text>
 
-      {/* Memo icon */}
-      {showMemos && bar.memo && (
-        <text
-          x={renderX + renderWidth - 10}
-          y={renderY + 8}
-          fontSize={8}
-          fill={tc.memoIcon}
-          pointerEvents="none"
-          style={{ userSelect: 'none' }}
-        >
-          📝
-        </text>
-      )}
-
       {/* Left resize handle */}
       <rect
         x={renderX}

@@ -19,6 +19,14 @@ export interface LaneTemplate {
   defaultHeightPx: number;
 }
 
+export interface DisplayBox {
+  dx: number;
+  dy: number;
+  width: number;
+  height: number;
+  fontSize: number;
+}
+
 export interface ScheduleBar {
   id: string;
   label: string;
@@ -30,6 +38,8 @@ export interface ScheduleBar {
   style?: { dashed?: boolean; opacity?: number };
   tooltip?: string;
   memo?: string;
+  tooltipDisplay?: DisplayBox;
+  memoDisplay?: DisplayBox;
 }
 
 export interface Milestone {
@@ -45,6 +55,8 @@ export interface Milestone {
   starSize?: number;     // star icon font size
   tooltip?: string;
   memo?: string;
+  tooltipDisplay?: DisplayBox;
+  memoDisplay?: DisplayBox;
 }
 
 export interface SwimLane {
@@ -105,6 +117,24 @@ export interface PageTimeline {
   monthWidthPx: number;
 }
 
+export interface TextBox {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  textColor: string;
+  fillColor: string;
+  borderColor: string;
+  borderWidth: number;
+  arrowTargetItemId?: string;
+  arrowTargetLaneId?: string;
+  arrowColor?: string;
+  arrowStrokeWidth?: number;
+}
+
 export interface SchedulePage {
   id: string;
   name: string;
@@ -113,6 +143,7 @@ export interface SchedulePage {
   annotations: Annotation[];
   connections?: Connection[];
   scheduleLines?: ScheduleLine[];
+  textBoxes?: TextBox[];
   filterTags?: string[];
 }
 
