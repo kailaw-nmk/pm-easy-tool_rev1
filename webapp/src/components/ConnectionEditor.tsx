@@ -59,7 +59,8 @@ export function ConnectionEditorDialog({ pageId, connectionId, onClose }: Props)
         </div>
         <div className="field">
           <label>メモ</label>
-          <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="接続のメモ" />
+          <textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={3} placeholder="メモ・補足情報"
+          />
         </div>
         <div className="field">
           <label>色</label>

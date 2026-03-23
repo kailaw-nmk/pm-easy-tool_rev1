@@ -1197,12 +1197,6 @@ export function GanttChart() {
                 <button onClick={() => { setEditConnection(contextMenu.id); setContextMenu(null); }}>編集...</button>
                 <button onClick={() => {
                   const conn = page?.connections?.find((c) => c.id === contextMenu.id);
-                  const memo = prompt('メモを入力:', conn?.memo ?? '');
-                  if (memo !== null) updateConnection(currentPageId, contextMenu.id, { memo: memo || undefined });
-                  setContextMenu(null);
-                }}>メモ編集</button>
-                <button onClick={() => {
-                  const conn = page?.connections?.find((c) => c.id === contextMenu.id);
                   const color = prompt('色を入力 (例: #ff0000):', conn?.color ?? '#888888');
                   if (color !== null) updateConnection(currentPageId, contextMenu.id, { color: color || undefined });
                   setContextMenu(null);
