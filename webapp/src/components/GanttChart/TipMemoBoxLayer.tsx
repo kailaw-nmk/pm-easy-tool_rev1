@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ScheduleBar, Milestone, SchedulePage, DisplayBox } from '../../types/schedule';
 import type { PositionContext } from '../../lib/position';
+import type { ResolvedConnection } from '../../lib/connection-utils';
 import { getItemRect } from '../../lib/connection-utils';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
@@ -16,7 +17,7 @@ interface TipMemoItem {
   display: DisplayBox;
   itemId: string;
   laneId: string;
-  itemKind: 'bar' | 'milestone';
+  itemKind: 'bar' | 'milestone' | 'connection';
   // Item rect center for arrow
   itemCX: number;
   itemCY: number;
@@ -30,6 +31,8 @@ interface TipMemoBoxLayerProps {
   showMemos: boolean;
   onEditBar?: (barId: string, laneId: string) => void;
   onEditMilestone?: (msId: string, laneId: string) => void;
+  resolvedConnections?: ResolvedConnection[];
+  onEditConnection?: (id: string) => void;
 }
 
 function getDefaultDisplay(
@@ -56,6 +59,16 @@ function getDefaultDisplay(
   };
 }
 
+function getDefaultConnectionMemoDisplay(): DisplayBox {
+  return {
+    dx: 10,
+    dy: -40,
+    width: 120,
+    height: 40,
+    fontSize: 10,
+  };
+}
+
 export function TipMemoBoxLayer({
   page,
   laneOffsets,
@@ -64,9 +77,12 @@ export function TipMemoBoxLayer({
   showMemos,
   onEditBar,
   onEditMilestone,
+  resolvedConnections,
+  onEditConnection,
 }: TipMemoBoxLayerProps) {
   const updateBar = useScheduleStore((s) => s.updateBar);
   const updateMilestone = useScheduleStore((s) => s.updateMilestone);
+  const updateConnection = useScheduleStore((s) => s.updateConnection);
   const currentPageId = useScheduleStore((s) => s.currentPageId);
   const fontSizeTipMemo = useUIStore((s) => s.fontSizeTipMemo);
 
@@ -82,7 +98,7 @@ export function TipMemoBoxLayer({
     origFontSize: number;
     itemId: string;
     laneId: string;
-    itemKind: 'bar' | 'milestone';
+    itemKind: 'bar' | 'milestone' | 'connection';
     boxType: 'tooltip' | 'memo';
   } | null>(null);
   const [dragDelta, setDragDelta] = useState<{ dx: number; dy: number } | null>(null);
@@ -160,6 +176,26 @@ export function TipMemoBoxLayer({
     }
   }
 
+  // Collect connection memos
+  if (showMemos && resolvedConnections) {
+    for (const rc of resolvedConnections) {
+      const conn = rc.connection;
+      if (!conn.memo) continue;
+      const midX = (rc.fromX + rc.toX) / 2;
+      const midY = (rc.fromY + rc.toY) / 2;
+      items.push({
+        type: 'memo',
+        text: conn.memo,
+        display: conn.memoDisplay ?? getDefaultConnectionMemoDisplay(),
+        itemId: conn.id,
+        laneId: '',
+        itemKind: 'connection',
+        itemCX: midX,
+        itemCY: midY,
+      });
+    }
+  }
+
   const handlePointerDown = useCallback((
     e: React.PointerEvent,
     item: TipMemoItem,
@@ -228,8 +264,10 @@ export function TipMemoBoxLayer({
             };
             if (d.itemKind === 'bar') {
               updateBar(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
-            } else {
+            } else if (d.itemKind === 'milestone') {
               updateMilestone(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
+            } else if (d.itemKind === 'connection') {
+              updateConnection(currentPageId, d.itemId, { memoDisplay: newDisplay });
             }
           } else {
             const newDisplay: DisplayBox = {
@@ -241,8 +279,10 @@ export function TipMemoBoxLayer({
             };
             if (d.itemKind === 'bar') {
               updateBar(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
-            } else {
+            } else if (d.itemKind === 'milestone') {
               updateMilestone(currentPageId, d.laneId, d.itemId, { [displayKey]: newDisplay });
+            } else if (d.itemKind === 'connection') {
+              updateConnection(currentPageId, d.itemId, { memoDisplay: newDisplay });
             }
           }
         }
@@ -253,16 +293,18 @@ export function TipMemoBoxLayer({
 
     window.addEventListener('pointermove', trackingMove);
     window.addEventListener('pointerup', onUp);
-  }, [currentPageId, updateBar, updateMilestone]);
+  }, [currentPageId, updateBar, updateMilestone, updateConnection]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent, item: TipMemoItem) => {
     e.stopPropagation();
     if (item.itemKind === 'bar') {
       onEditBar?.(item.itemId, item.laneId);
-    } else {
+    } else if (item.itemKind === 'milestone') {
       onEditMilestone?.(item.itemId, item.laneId);
+    } else if (item.itemKind === 'connection') {
+      onEditConnection?.(item.itemId);
     }
-  }, [onEditBar, onEditMilestone]);
+  }, [onEditBar, onEditMilestone, onEditConnection]);
 
   if (items.length === 0) return null;
 
@@ -302,22 +344,30 @@ export function TipMemoBoxLayer({
           }
         }
 
-        // Box position = item rect origin + offset
-        const itemRect = getItemRect(
-          page.swimLanes.find((l) => l.id === item.laneId)!,
-          item.itemId,
-          laneOffsetMap.get(item.laneId)!,
-          posCtx,
-        );
-        const boxX = (itemRect ? itemRect.x : item.itemCX) + renderDx;
-        const boxY = (itemRect ? itemRect.y : item.itemCY) + renderDy;
+        // Box position: for connection items, use midpoint directly; for bar/milestone, use item rect origin
+        let boxX: number;
+        let boxY: number;
+        if (item.itemKind === 'connection') {
+          boxX = item.itemCX + renderDx;
+          boxY = item.itemCY + renderDy;
+        } else {
+          const itemRect = getItemRect(
+            page.swimLanes.find((l) => l.id === item.laneId)!,
+            item.itemId,
+            laneOffsetMap.get(item.laneId)!,
+            posCtx,
+          );
+          boxX = (itemRect ? itemRect.x : item.itemCX) + renderDx;
+          boxY = (itemRect ? itemRect.y : item.itemCY) + renderDy;
+        }
 
         const boxCX = boxX + renderW / 2;
         const boxCY = boxY + renderH / 2;
 
         const isTooltip = item.type === 'tooltip';
-        const fillColor = isTooltip ? '#fffde7cc' : '#e3f2fdcc';
-        const borderColor = isTooltip ? '#f9a825' : '#42a5f5';
+        const isConnection = item.itemKind === 'connection';
+        const fillColor = isTooltip ? '#fffde7cc' : isConnection ? '#e8f5e9cc' : '#e3f2fdcc';
+        const borderColor = isTooltip ? '#f9a825' : isConnection ? '#66bb6a' : '#42a5f5';
 
         return (
           <g key={key}>

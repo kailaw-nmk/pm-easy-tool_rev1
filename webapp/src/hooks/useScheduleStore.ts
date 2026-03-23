@@ -187,6 +187,13 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       historyIndex: 0,
       currentPageId: data.pages[0]?.id ?? 'p0',
     });
+    // Restore laneHeaderWidthPx from saved data
+    if (data.timeline.laneHeaderWidthPx) {
+      useUIStore.getState().setLaneHeaderWidthPx(data.timeline.laneHeaderWidthPx);
+    }
+    if (data.settings) {
+      useUIStore.getState().applySettings(data.settings);
+    }
   },
 
   saveData: async () => {
@@ -197,6 +204,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const uiState = useUIStore.getState();
       const dataWithSettings = {
         ...data,
+        timeline: {
+          ...data.timeline,
+          laneHeaderWidthPx: uiState.laneHeaderWidthPx,
+        },
         settings: {
           fontSizeLaneTitle: uiState.fontSizeLaneTitle,
           fontSizeBarText: uiState.fontSizeBarText,
@@ -214,6 +225,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           defaultScheduleLineColor: uiState.defaultScheduleLineColor,
           defaultScheduleLineStrokeWidth: uiState.defaultScheduleLineStrokeWidth,
           defaultScheduleLineStyle: uiState.defaultScheduleLineStyle,
+          laneHeaderWidthPx: uiState.laneHeaderWidthPx,
         },
       };
       saveScheduleToStorage(dataWithSettings);
@@ -1274,6 +1286,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const uiState = useUIStore.getState();
     const exportData = {
       ...data,
+      timeline: {
+        ...data.timeline,
+        laneHeaderWidthPx: uiState.laneHeaderWidthPx,
+      },
       settings: {
         fontSizeLaneTitle: uiState.fontSizeLaneTitle,
         fontSizeBarText: uiState.fontSizeBarText,
@@ -1291,6 +1307,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         defaultScheduleLineColor: uiState.defaultScheduleLineColor,
         defaultScheduleLineStrokeWidth: uiState.defaultScheduleLineStrokeWidth,
         defaultScheduleLineStyle: uiState.defaultScheduleLineStyle,
+        laneHeaderWidthPx: uiState.laneHeaderWidthPx,
       },
     };
     const json = JSON.stringify(exportData, null, 2);

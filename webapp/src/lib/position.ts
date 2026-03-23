@@ -1,6 +1,6 @@
 import type { ZoomLevel, PageTimeline } from '../types/schedule';
-import { monthToX, barWidthPx, xToMonth, dateToXDay, daysBetween2, xToDateDay, snapToQuarter, snapToYear } from './date-utils';
-import { getDayWidth } from './zoom';
+import { monthToX, barWidthPx, xToMonth, dateToXDay, daysBetween2, xToDateDay, snapToQuarter, snapToYear, snapToWeek } from './date-utils';
+import { getDayWidth, isDayBased } from './zoom';
 
 export interface PositionContext {
   timeline: PageTimeline;
@@ -10,7 +10,7 @@ export interface PositionContext {
 
 /** Zoom-aware X coordinate for a date (YYYY-MM or YYYY-MM-DD) */
 export function itemX(date: string, ctx: PositionContext): number {
-  if (ctx.zoomLevel === 'day') {
+  if (isDayBased(ctx.zoomLevel)) {
     const dayWidth = getDayWidth(ctx.timeline.monthWidthPx);
     return dateToXDay(date, ctx.timeline.startDate, dayWidth, ctx.headerWidth);
   }
@@ -21,7 +21,7 @@ export function itemX(date: string, ctx: PositionContext): number {
 
 /** Zoom-aware width between two dates */
 export function itemWidth(startMonth: string, endMonth: string, ctx: PositionContext): number {
-  if (ctx.zoomLevel === 'day') {
+  if (isDayBased(ctx.zoomLevel)) {
     const dayWidth = getDayWidth(ctx.timeline.monthWidthPx);
     return daysBetween2(startMonth, endMonth) * dayWidth;
   }
@@ -31,9 +31,11 @@ export function itemWidth(startMonth: string, endMonth: string, ctx: PositionCon
 
 /** Convert X pixel position back to date (zoom-aware with snap) */
 export function xToDate(x: number, ctx: PositionContext): string {
-  if (ctx.zoomLevel === 'day') {
+  if (isDayBased(ctx.zoomLevel)) {
     const dayWidth = getDayWidth(ctx.timeline.monthWidthPx);
-    return xToDateDay(x, ctx.timeline.startDate, dayWidth, ctx.headerWidth);
+    const dayDate = xToDateDay(x, ctx.timeline.startDate, dayWidth, ctx.headerWidth);
+    if (ctx.zoomLevel === 'week') return snapToWeek(dayDate);
+    return dayDate;
   }
   const month = xToMonth(x, ctx.timeline.startDate, ctx.timeline.monthWidthPx, ctx.headerWidth);
   if (ctx.zoomLevel === 'quarter') return snapToQuarter(month);

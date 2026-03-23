@@ -15,11 +15,12 @@ import { LaneTagEditor } from '../LaneTagEditor';
 import { ConnectionEditorDialog } from '../ConnectionEditor';
 import { ScheduleLineLayer } from './ScheduleLineLayer';
 import { ScheduleLineEditorDialog } from '../ScheduleLineEditor';
+import { LaneHeaderResizeHandle } from './LaneHeaderResizeHandle';
 import { TextBoxLayer } from './TextBoxLayer';
 import { TipMemoBoxLayer } from './TipMemoBoxLayer';
 import { TextBoxEditorDialog } from '../TextBoxEditor';
 import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay, xToMonth, generateMonthRange } from '../../lib/date-utils';
-import { dayZoomTotalWidth, getHeaderHeight, getZoomConfig, getDayWidth } from '../../lib/zoom';
+import { dayZoomTotalWidth, getHeaderHeight, getZoomConfig, getDayWidth, isDayBased } from '../../lib/zoom';
 import { resolveTimeline } from '../../lib/effective-timeline';
 import { resolveConnections, getItemRect } from '../../lib/connection-utils';
 import { generateSnapPoints, findNearestSnapPoint, type SnapPoint } from '../../lib/snap-points';
@@ -80,7 +81,7 @@ export function GanttChart() {
 
   const page = data?.pages.find((p) => p.id === currentPageId);
   const rawTimeline = page?.timeline ?? data?.timeline;
-  const headerWidth = data?.timeline.laneHeaderWidthPx ?? 140;
+  const headerWidth = useUIStore((s) => s.laneHeaderWidthPx);
 
   const resolvedTimeline = useMemo(
     () => resolveTimeline(rawTimeline, { headerWidth, containerWidth, displayMode, zoomLevel }),
@@ -98,14 +99,14 @@ export function GanttChart() {
 
   const totalWidth = useMemo(() => {
     if (!timeline) return 800;
-    if (zoomLevel === 'day') {
+    if (isDayBased(zoomLevel)) {
       return dayZoomTotalWidth(timeline.startDate, timeline.endDate, timeline.monthWidthPx, headerWidth);
     }
     return headerWidth + totalMonths * timeline.monthWidthPx;
   }, [timeline, zoomLevel, headerWidth, totalMonths]);
 
   // Effective lane height: in fit mode (non-day zoom), auto-calculate from container height
-  const isFitVertical = displayMode === 'fit' && zoomLevel !== 'day';
+  const isFitVertical = displayMode === 'fit' && !isDayBased(zoomLevel);
   const effectiveLaneHeight = useMemo(() => {
     if (!page || !isFitVertical || containerHeight <= 0) return null;
     const numLanes = page.swimLanes.length;
@@ -456,7 +457,7 @@ export function GanttChart() {
       const newStart = xToDate(barBaseX + dx, ctx);
       const updates: Partial<import('../../types/schedule').ScheduleBar> = {};
 
-      if (zoomLevel === 'day') {
+      if (isDayBased(zoomLevel)) {
         const durDays = daysBetween2(bar.startMonth, bar.endMonth);
         const s = parseDate2(newStart);
         const startD = new Date(s.year, s.month - 1, s.day);
@@ -876,7 +877,6 @@ export function GanttChart() {
           <g clipPath="url(#content-area-clip)">
             <ConnectionLayer
               resolvedConnections={resolvedConns}
-              showMemos={showMemos}
               selectedConnectionId={selectedConnectionId}
               onConnectionClick={handleConnectionClick}
               onConnectionDoubleClick={handleConnectionDoubleClick}
@@ -942,6 +942,8 @@ export function GanttChart() {
                 showMemos={showMemos}
                 onEditBar={(barId, laneId) => setEditBar({ barId, laneId })}
                 onEditMilestone={(msId, laneId) => setEditMs({ msId, laneId })}
+                resolvedConnections={resolvedConns}
+                onEditConnection={(id) => setEditConnection(id)}
               />
             </g>
           )}
@@ -1027,6 +1029,19 @@ export function GanttChart() {
           onLaneClick={handleLaneClick}
           onLaneDragStart={handleLaneDragStart}
         />
+
+        {/* Lane header resize handle: sticky left for horizontal scroll */}
+        <div style={{
+          position: 'sticky',
+          left: 0,
+          width: headerWidth + 3,
+          height: headerHeight + bodyHeight,
+          marginTop: -(headerHeight + bodyHeight),
+          zIndex: 30,
+          pointerEvents: 'none',
+        }}>
+          <LaneHeaderResizeHandle headerWidth={headerWidth} totalHeight={headerHeight + bodyHeight} />
+        </div>
       </div>
 
       {/* Tooltip overlay */}

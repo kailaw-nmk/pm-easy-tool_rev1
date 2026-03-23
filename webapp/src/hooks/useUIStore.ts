@@ -24,6 +24,7 @@ function extractSettings(state: UIState): DisplaySettings {
     defaultScheduleLineColor: state.defaultScheduleLineColor,
     defaultScheduleLineStrokeWidth: state.defaultScheduleLineStrokeWidth,
     defaultScheduleLineStyle: state.defaultScheduleLineStyle,
+    laneHeaderWidthPx: state.laneHeaderWidthPx,
   };
 }
 
@@ -68,6 +69,7 @@ interface UIState {
   defaultScheduleLineColor: string;
   defaultScheduleLineStrokeWidth: number;
   defaultScheduleLineStyle: 'solid' | 'dashed' | 'dotted';
+  laneHeaderWidthPx: number;
   toggleTooltips: () => void;
   toggleMemos: () => void;
   toggleMonthGridLines: () => void;
@@ -92,6 +94,7 @@ interface UIState {
   setDefaultScheduleLineColor: (color: string) => void;
   setDefaultScheduleLineStrokeWidth: (width: number) => void;
   setDefaultScheduleLineStyle: (style: 'solid' | 'dashed' | 'dotted') => void;
+  setLaneHeaderWidthPx: (width: number) => void;
   loadSettings: () => Promise<void>;
   applySettings: (settings: DisplaySettings) => void;
 }
@@ -119,6 +122,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   defaultScheduleLineColor: '#3b82f6',
   defaultScheduleLineStrokeWidth: 1.5,
   defaultScheduleLineStyle: 'dashed',
+  laneHeaderWidthPx: 140,
 
   toggleTooltips: () => set((s) => {
     const next = { showTooltips: !s.showTooltips };
@@ -193,6 +197,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ defaultScheduleLineStyle: style });
     scheduleSettingsSave(get);
   },
+  setLaneHeaderWidthPx: (width) => {
+    set({ laneHeaderWidthPx: width });
+    scheduleSettingsSave(get);
+  },
   setThemeMode: (mode) => {
     try { localStorage.setItem('app-theme', mode); } catch {}
     set({ themeMode: mode });
@@ -230,6 +238,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       defaultScheduleLineColor: settings.defaultScheduleLineColor ?? '#3b82f6',
       defaultScheduleLineStrokeWidth: settings.defaultScheduleLineStrokeWidth ?? 1.5,
       defaultScheduleLineStyle: settings.defaultScheduleLineStyle ?? 'dashed',
+      laneHeaderWidthPx: (settings as any).laneHeaderWidthPx ?? 140,
     });
     if (settings.themeMode) {
       try { localStorage.setItem('app-theme', settings.themeMode); } catch {}

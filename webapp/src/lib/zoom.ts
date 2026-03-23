@@ -4,7 +4,7 @@ import { YEAR_HEADER_Y, YEAR_HEADER_HEIGHT, QUARTER_HEADER_HEIGHT, MONTH_HEADER_
 export interface ZoomConfig {
   level: ZoomLevel;
   /** Header layers to show */
-  headers: ('year' | 'quarter' | 'month' | 'day')[];
+  headers: ('year' | 'quarter' | 'month' | 'week' | 'day')[];
   /** Snap granularity in months (1 for month/quarter/year, 0 means day-level) */
   snapMonths: number;
   /** Whether to use day-based width calculation */
@@ -15,6 +15,12 @@ const ZOOM_CONFIGS: Record<ZoomLevel, ZoomConfig> = {
   day: {
     level: 'day',
     headers: ['year', 'month', 'day'],
+    snapMonths: 0,
+    useDayWidth: true,
+  },
+  week: {
+    level: 'week',
+    headers: ['year', 'month', 'week'],
     snapMonths: 0,
     useDayWidth: true,
   },
@@ -42,6 +48,11 @@ export function getZoomConfig(level: ZoomLevel): ZoomConfig {
   return ZOOM_CONFIGS[level];
 }
 
+/** Returns true if the zoom level uses day-based width calculation (day, week) */
+export function isDayBased(level: ZoomLevel): boolean {
+  return getZoomConfig(level).useDayWidth;
+}
+
 /**
  * Calculate pixel width per day for the Day zoom level.
  * Uses max(20, monthWidthPx / 30) to ensure readability.
@@ -57,6 +68,7 @@ export function getHeaderHeight(level: ZoomLevel): number {
     year: YEAR_HEADER_HEIGHT,
     quarter: QUARTER_HEADER_HEIGHT,
     month: MONTH_HEADER_HEIGHT,
+    week: MONTH_HEADER_HEIGHT,
     day: MONTH_HEADER_HEIGHT, // day row uses same height as month
   };
   let height = YEAR_HEADER_Y;

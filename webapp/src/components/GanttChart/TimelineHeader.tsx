@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { PageTimeline, ZoomLevel } from '../../types/schedule';
-import { generateMonthRange, parseYearMonth, monthToQuarter, monthAbbr, daysInMonth } from '../../lib/date-utils';
+import { generateMonthRange, parseYearMonth, monthToQuarter, monthAbbr, daysInMonth, getISOWeekNumber } from '../../lib/date-utils';
 import { YEAR_HEADER_Y, QUARTER_HEADER_Y, MONTH_HEADER_Y, YEAR_HEADER_HEIGHT, QUARTER_HEADER_HEIGHT, MONTH_HEADER_HEIGHT } from '../../lib/constants';
 import { getZoomConfig, getDayWidth } from '../../lib/zoom';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -174,6 +174,56 @@ export function TimelineHeader({ timeline, headerWidth, zoomLevel = 'month', fon
           </g>
         );
       })}
+
+      {/* Week row (week zoom only) */}
+      {headerRows.includes('week') && (() => {
+        const dayWidth = getDayWidth(timeline.monthWidthPx);
+        const yPos = rowY(headerRows.indexOf('week'));
+        const elements: React.ReactElement[] = [];
+        const startDate = parseYearMonth(timeline.startDate);
+        const endDate = parseYearMonth(timeline.endDate);
+        const startMs = new Date(startDate.year, startDate.month - 1, 1).getTime();
+        const endMs = new Date(endDate.year, endDate.month, 1).getTime(); // 1 month past end
+        const totalDays = Math.round((endMs - startMs) / (1000 * 60 * 60 * 24));
+
+        // Walk day by day to find week boundaries (Mondays)
+        let weekIndex = 0;
+        let d = 0;
+        while (d < totalDays) {
+          const currentDate = new Date(startMs + d * 86400000);
+          const dow = currentDate.getDay(); // 0=Sun
+          // Find next Monday (or start if already Monday)
+          if (d === 0 || dow === 1) {
+            // Calculate week span: from current day to next Monday or end
+            let weekDays = 0;
+            if (d === 0 && dow !== 1) {
+              // Partial first week: days until next Monday
+              weekDays = dow === 0 ? 1 : (8 - dow);
+              weekDays = Math.min(weekDays, totalDays - d);
+            } else {
+              weekDays = Math.min(7, totalDays - d);
+            }
+            const x = headerWidth + d * dayWidth;
+            const w = weekDays * dayWidth;
+            const weekNum = getISOWeekNumber(currentDate.getFullYear(), currentDate.getMonth() + 1, currentDate.getDate());
+            elements.push(
+              <g key={`week-${d}`}>
+                <rect x={x} y={yPos} width={w} height={MONTH_HEADER_HEIGHT}
+                  fill={weekIndex % 2 === 0 ? tc.headerDayEvenBg : tc.headerDayOddBg} stroke={tc.headerDayStroke} strokeWidth={0.5} />
+                <text x={x + w / 2} y={yPos + MONTH_HEADER_HEIGHT / 2}
+                  textAnchor="middle" dominantBaseline="central" fontSize={fs(7)} fill={tc.textSecondary}>
+                  W{weekNum}
+                </text>
+              </g>
+            );
+            weekIndex++;
+            d += weekDays;
+          } else {
+            d++;
+          }
+        }
+        return elements;
+      })()}
 
       {/* Day row (day zoom only) */}
       {headerRows.includes('day') && (() => {

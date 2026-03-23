@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState, useMemo } from 'react';
 import type { Milestone, PageTimeline, ZoomLevel } from '../../types/schedule';
 import { itemX, type PositionContext } from '../../lib/position';
+import { isDayBased } from '../../lib/zoom';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -79,7 +80,7 @@ export function MilestoneComponent({
   // --- Computed positions ---
   // Offset so the star (center of default text width) aligns with month center
   const dateXRaw = itemX(milestone.date, posCtx);
-  const monthCenterOffset = zoomLevel === 'day' ? 0 : (timeline.monthWidthPx - DEFAULT_TEXT_WIDTH) / 2;
+  const monthCenterOffset = isDayBased(zoomLevel) ? 0 : (timeline.monthWidthPx - DEFAULT_TEXT_WIDTH) / 2;
   const dateX = dateXRaw + monthCenterOffset;
   const labelLineHeight = fontSizeMilestone + 3;
 

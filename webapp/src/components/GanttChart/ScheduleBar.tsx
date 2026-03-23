@@ -3,6 +3,7 @@ import type { ScheduleBar, PageTimeline, ZoomLevel } from '../../types/schedule'
 import { resolveBarColor } from '../../lib/color-map';
 import { monthsBetween, parseYearMonth, formatYearMonth, daysBetween2, parseDate2, formatYearMonthDay } from '../../lib/date-utils';
 import { itemX, itemWidth, xToDate, type PositionContext } from '../../lib/position';
+import { isDayBased } from '../../lib/zoom';
 import { BAR_BORDER_RADIUS, MIN_BAR_HEIGHT } from '../../lib/constants';
 import { useScheduleStore } from '../../hooks/useScheduleStore';
 import { useUIStore } from '../../hooks/useUIStore';
@@ -187,7 +188,7 @@ export function ScheduleBarComponent({
         }
 
         const newStart = xToDate(baseX + dx, ctx);
-        if (zoomLevel === 'day') {
+        if (isDayBased(zoomLevel)) {
           const durDays = daysBetween2(drag.origStartMonth, drag.origEndMonth);
           const s = parseDate2(newStart);
           const startD = new Date(s.year, s.month - 1, s.day);

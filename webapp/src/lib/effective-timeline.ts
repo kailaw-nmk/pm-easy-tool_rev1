@@ -1,5 +1,6 @@
 import type { PageTimeline, DisplayMode, ZoomLevel } from '../types/schedule';
 import { monthsBetween } from './date-utils';
+import { isDayBased } from './zoom';
 
 const DEFAULT_MONTH_WIDTH = 60;
 
@@ -25,7 +26,7 @@ export function getEffectiveMonthWidth(
   params: ResolveParams,
 ): number {
   // Day zoom → always fixed
-  if (params.zoomLevel === 'day') {
+  if (isDayBased(params.zoomLevel)) {
     return timeline.monthWidthPx;
   }
 
@@ -63,7 +64,7 @@ export function resolveTimeline(
 
   // Calculate fontScale
   let fontScale = 1.0;
-  if (params.displayMode === 'fit' && params.zoomLevel !== 'day') {
+  if (params.displayMode === 'fit' && !isDayBased(params.zoomLevel)) {
     const raw = effectiveWidth / DEFAULT_MONTH_WIDTH;
     fontScale = Math.max(0.6, Math.min(2.5, raw));
   }

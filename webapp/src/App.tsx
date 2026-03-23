@@ -9,6 +9,7 @@ import { GanttChart } from './components/GanttChart/GanttChart';
 import { setGanttContainer, getGanttContainer } from './lib/gantt-refs';
 import { scrollToToday } from './lib/scroll-utils';
 import { resolveTimeline } from './lib/effective-timeline';
+import { isDayBased } from './lib/zoom';
 import { getTheme } from './lib/theme';
 
 export default function App() {
@@ -81,14 +82,14 @@ export default function App() {
     const p = data?.pages.find((pg) => pg.id === currentPageId);
     return p?.timeline ?? data?.timeline;
   })());
-  const headerWidthRef = useRef(data?.timeline.laneHeaderWidthPx ?? 140);
+  const headerWidthRef = useRef(useUIStore.getState().laneHeaderWidthPx);
   const containerWidthRef = useRef(useUIStore.getState().containerWidth);
   const displayModeRef = useRef(displayMode);
 
   useEffect(() => {
     const p = data?.pages.find((pg) => pg.id === currentPageId);
     rawTimelineRef.current = p?.timeline ?? data?.timeline;
-    headerWidthRef.current = data?.timeline.laneHeaderWidthPx ?? 140;
+    headerWidthRef.current = useUIStore.getState().laneHeaderWidthPx;
   }, [data, currentPageId]);
 
   useEffect(() => {
@@ -185,7 +186,7 @@ export default function App() {
       <div
         className="gantt-container"
         ref={setRef}
-        style={displayMode === 'fit' && zoomLevel !== 'day' ? { overflowX: 'hidden', overflowY: 'hidden' } : undefined}
+        style={displayMode === 'fit' && !isDayBased(zoomLevel) ? { overflowX: 'hidden', overflowY: 'hidden' } : undefined}
       >
         <GanttChart />
       </div>

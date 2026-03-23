@@ -193,3 +193,39 @@ export function formatDateLabel(year: number, month: number, day?: number): stri
   if (day !== undefined) return `${day}`;
   return monthAbbr(month);
 }
+
+/** Get ISO 8601 week number for a given date */
+export function getISOWeekNumber(year: number, month: number, day: number): number {
+  const date = new Date(year, month - 1, day);
+  // Set to nearest Thursday: current date + 4 - current day number (Mon=1, Sun=7)
+  const dayOfWeek = date.getDay() || 7; // Convert Sun=0 to 7
+  date.setDate(date.getDate() + 4 - dayOfWeek);
+  // Get first day of year
+  const yearStart = new Date(date.getFullYear(), 0, 1);
+  // Calculate full weeks to nearest Thursday
+  const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return weekNo;
+}
+
+/** Snap "YYYY-MM-DD" to nearest Monday (ISO week start) */
+export function snapToWeek(dateStr: string): string {
+  const { year, month, day } = parseDate2(dateStr);
+  const d = new Date(year, month - 1, day);
+  const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon, ...
+  // Calculate offset to nearest Monday
+  // If dayOfWeek <= 3 (Sun-Wed), snap back to previous Monday
+  // If dayOfWeek >= 4 (Thu-Sat), snap forward to next Monday
+  let offset: number;
+  if (dayOfWeek === 0) {
+    // Sunday → snap back to previous Monday (-6 days) or forward to next (+1)
+    offset = 1; // snap forward to Monday
+  } else if (dayOfWeek <= 4) {
+    // Mon(1)-Thu(4) → snap back to Monday
+    offset = 1 - dayOfWeek;
+  } else {
+    // Fri(5)-Sat(6) → snap forward to next Monday
+    offset = 8 - dayOfWeek;
+  }
+  const snapped = new Date(d.getTime() + offset * 86400000);
+  return formatYearMonthDay(snapped.getFullYear(), snapped.getMonth() + 1, snapped.getDate());
+}

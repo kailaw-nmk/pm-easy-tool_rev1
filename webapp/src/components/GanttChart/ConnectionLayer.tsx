@@ -4,7 +4,6 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   resolvedConnections: ResolvedConnection[];
-  showMemos?: boolean;
   selectedConnectionId?: string | null;
   onConnectionClick?: (e: React.MouseEvent, connectionId: string) => void;
   onConnectionDoubleClick?: (connectionId: string) => void;
@@ -13,7 +12,6 @@ interface Props {
 
 export function ConnectionLayer({
   resolvedConnections,
-  showMemos,
   selectedConnectionId,
   onConnectionClick,
   onConnectionDoubleClick,
@@ -62,22 +60,6 @@ export function ConnectionLayer({
         // Always draw a single straight line between the two points
         const pathD = `M ${fromX},${fromY} L ${toX},${toY}`;
 
-        const memoX = (fromX + toX) / 2;
-        const memoY = (fromY + toY) / 2 - 6;
-
-        // Bubble memo dimensions
-        const memoText = connection.memo;
-        const bubblePadX = 6;
-        const bubblePadY = 3;
-        const memoFontSize = 9;
-        const charWidth = memoFontSize * 0.65;
-        const textW = memoText ? memoText.length * charWidth : 0;
-        const bubbleW = textW + bubblePadX * 2;
-        const bubbleH = memoFontSize + bubblePadY * 2;
-        const bubbleX = memoX - bubbleW / 2;
-        const bubbleY = memoY - bubbleH + 2;
-        const triSize = 4;
-
         return (
           <g key={connection.id}>
             {/* Per-connection arrowhead marker matching line color */}
@@ -123,51 +105,6 @@ export function ConnectionLayer({
                 <circle cx={fromX} cy={fromY} r={4} fill={tc.selectionStroke} stroke="white" strokeWidth={1} pointerEvents="none" />
                 <circle cx={toX} cy={toY} r={4} fill={tc.selectionStroke} stroke="white" strokeWidth={1} pointerEvents="none" />
               </>
-            )}
-            {/* Memo bubble */}
-            {showMemos && memoText && (
-              <g pointerEvents="none">
-                {/* Bubble background */}
-                <rect
-                  x={bubbleX}
-                  y={bubbleY}
-                  width={bubbleW}
-                  height={bubbleH}
-                  rx={4}
-                  ry={4}
-                  fill={tc.tooltipBg ?? tc.surface}
-                  stroke={tc.border}
-                  strokeWidth={0.5}
-                  opacity={0.92}
-                />
-                {/* Triangle pointer */}
-                <polygon
-                  points={`${memoX - triSize},${bubbleY + bubbleH} ${memoX + triSize},${bubbleY + bubbleH} ${memoX},${bubbleY + bubbleH + triSize}`}
-                  fill={tc.tooltipBg ?? tc.surface}
-                  stroke={tc.border}
-                  strokeWidth={0.5}
-                />
-                {/* Cover the triangle top border with a line matching bg */}
-                <line
-                  x1={memoX - triSize + 0.5}
-                  y1={bubbleY + bubbleH}
-                  x2={memoX + triSize - 0.5}
-                  y2={bubbleY + bubbleH}
-                  stroke={tc.tooltipBg ?? tc.surface}
-                  strokeWidth={1}
-                />
-                {/* Memo text */}
-                <text
-                  x={memoX}
-                  y={bubbleY + bubblePadY + memoFontSize - 1}
-                  textAnchor="middle"
-                  fontSize={memoFontSize}
-                  fill={tc.tooltipText ?? tc.textPrimary}
-                  style={{ userSelect: 'none' }}
-                >
-                  {memoText}
-                </text>
-              </g>
             )}
           </g>
         );

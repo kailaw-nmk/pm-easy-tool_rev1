@@ -15,3 +15,5 @@ export const AUTO_SAVE_DELAY_MS = 5000;
 export const DEFAULT_DAY_WIDTH = 20;
 export const MIN_DAY_WIDTH = 14;
 export const MIN_BAR_HEIGHT = 12;
+export const MIN_LANE_HEADER_WIDTH = 60;
+export const MAX_LANE_HEADER_WIDTH = 400;

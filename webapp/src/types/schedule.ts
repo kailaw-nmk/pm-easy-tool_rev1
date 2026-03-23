@@ -1,6 +1,6 @@
 export type BarColor = string;
 
-export type ZoomLevel = 'day' | 'month' | 'quarter' | 'year';
+export type ZoomLevel = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
 export type DisplayMode = 'fixed' | 'fit';
 
@@ -80,6 +80,7 @@ export interface Connection {
   toAnchor?: ConnectionAnchor;
   lineType: ConnectionLineType;
   memo?: string;
+  memoDisplay?: DisplayBox;
   color?: string;
   strokeWidth?: number;
 }
@@ -160,6 +161,7 @@ export interface DisplaySettings {
   defaultScheduleLineColor?: string;
   defaultScheduleLineStrokeWidth?: number;
   defaultScheduleLineStyle?: 'solid' | 'dashed' | 'dotted';
+  laneHeaderWidthPx?: number;
 }
 
 export interface ScheduleData {

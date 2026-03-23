@@ -23,6 +23,7 @@ import {
   Upload, Download, Image, FileText, NotebookPen, Type, Crosshair,
 } from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution, LaneConflict, LaneConflictResolution } from '../types/schedule';
+import { isDayBased } from '../lib/zoom';
 
 export function Toolbar() {
   const { data, saveData, undo, redo, canUndo, canRedo, isDirty, isSaving, currentPageId, addLane, importData, downloadData, importDataAdditive, resetItemPositions } = useScheduleStore();
@@ -45,7 +46,7 @@ export function Toolbar() {
 
   // Auto-switch to Fixed when Day zoom is selected
   useEffect(() => {
-    if (zoomLevel === 'day' && displayMode === 'fit') {
+    if (isDayBased(zoomLevel) && displayMode === 'fit') {
       setDisplayMode('fixed');
     }
   }, [zoomLevel, displayMode, setDisplayMode]);
@@ -55,7 +56,7 @@ export function Toolbar() {
   const handleScrollToToday = useCallback(() => {
     const page = data?.pages.find((p) => p.id === currentPageId);
     const rawTimeline = page?.timeline ?? data?.timeline;
-    const headerWidth = data?.timeline.laneHeaderWidthPx ?? 140;
+    const headerWidth = useUIStore.getState().laneHeaderWidthPx;
     const container = getGanttContainer();
     if (!container || !rawTimeline) return;
     const resolved = resolveTimeline(rawTimeline, { headerWidth, containerWidth, displayMode, zoomLevel });
@@ -296,13 +297,13 @@ export function Toolbar() {
 
         {/* Zoom level — segment control */}
         <div className="zoom-group">
-          {(['day', 'month', 'quarter', 'year'] as ZoomLevel[]).map((level) => (
+          {(['day', 'week', 'month', 'quarter', 'year'] as ZoomLevel[]).map((level) => (
             <button
               key={level}
               className={zoomLevel === level ? 'zoom-active' : ''}
               onClick={() => setZoomLevel(level)}
             >
-              {level === 'day' ? 'Day' : level === 'month' ? 'Month' : level === 'quarter' ? 'Q' : 'Year'}
+              {level === 'day' ? 'Day' : level === 'week' ? 'Week' : level === 'month' ? 'Month' : level === 'quarter' ? 'Q' : 'Year'}
             </button>
           ))}
         </div>
@@ -314,7 +315,7 @@ export function Toolbar() {
               key={mode}
               className={displayMode === mode ? 'mode-active' : ''}
               onClick={() => setDisplayMode(mode)}
-              disabled={mode === 'fit' && zoomLevel === 'day'}
+              disabled={mode === 'fit' && isDayBased(zoomLevel)}
               title={mode === 'fixed' ? '\u56FA\u5B9A\u5217\u5E45' : '\u30A6\u30A3\u30F3\u30C9\u30A6\u30D5\u30A3\u30C3\u30C8'}
             >
               {mode === 'fixed' ? 'Fixed' : 'Fit'}

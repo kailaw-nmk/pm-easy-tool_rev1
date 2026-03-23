@@ -1,6 +1,6 @@
 import type { PageTimeline, ZoomLevel } from '../../types/schedule';
 import { monthToX, todayYearMonth, todayYearMonthDay, dateToXDay } from '../../lib/date-utils';
-import { getDayWidth } from '../../lib/zoom';
+import { getDayWidth, isDayBased } from '../../lib/zoom';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
@@ -15,7 +15,7 @@ export function TodayLine({ timeline, headerWidth, chartHeight, zoomLevel = 'mon
   const tc = useThemeColors();
   let x: number;
 
-  if (zoomLevel === 'day') {
+  if (isDayBased(zoomLevel)) {
     const today = todayYearMonthDay();
     const dayWidth = getDayWidth(timeline.monthWidthPx);
     x = dateToXDay(today, timeline.startDate, dayWidth, headerWidth);
