@@ -55,7 +55,7 @@ export function SettingsPopover() {
     themeMode,
   } = useUIStore();
 
-  const { data, currentPageId, updateTimeline, updateMonthWidth, updatePageTimeline, updatePageMonthWidth } = useScheduleStore();
+  const { data, currentPageId, updatePageTimeline, updatePageMonthWidth, clearPageTimeline } = useScheduleStore();
   const page = data?.pages.find((p) => p.id === currentPageId);
   const hasPageTimeline = !!page?.timeline;
   const timeline = page?.timeline ?? data?.timeline;
@@ -101,17 +101,13 @@ export function SettingsPopover() {
       {timeline && displayMode === 'fixed' && (
         <>
           <div className="settings-section-divider" />
-          <div className="settings-section-label">月幅（Fixed モード）</div>
+          <div className="settings-section-label">月幅（Fixed モード）{hasPageTimeline ? '（このページ）' : '（全ページ共通）'}</div>
           <div className="settings-row">
             <label>月幅</label>
             <input type="range" min={20} max={120} value={timeline.monthWidthPx}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                if (hasPageTimeline) {
-                  updatePageMonthWidth(currentPageId, v);
-                } else {
-                  updateMonthWidth(v);
-                }
+                updatePageMonthWidth(currentPageId, v);
               }} />
             <span>{timeline.monthWidthPx}px</span>
           </div>
@@ -120,17 +116,13 @@ export function SettingsPopover() {
       {timeline && (
         <>
           <div className="settings-section-divider" />
-          <div className="settings-section-label">タイムライン範囲</div>
+          <div className="settings-section-label">タイムライン範囲{hasPageTimeline ? '（このページ）' : '（全ページ共通）'}</div>
           <div className="settings-row">
             <label>開始</label>
             <input type="month" value={timeline.startDate.substring(0, 7)}
               onChange={(e) => {
                 const v = e.target.value;
-                if (hasPageTimeline) {
-                  updatePageTimeline(currentPageId, { startDate: v });
-                } else {
-                  updateTimeline({ startDate: v });
-                }
+                updatePageTimeline(currentPageId, { startDate: v });
               }} />
           </div>
           <div className="settings-row">
@@ -138,13 +130,23 @@ export function SettingsPopover() {
             <input type="month" value={timeline.endDate.substring(0, 7)}
               onChange={(e) => {
                 const v = e.target.value;
-                if (hasPageTimeline) {
-                  updatePageTimeline(currentPageId, { endDate: v });
-                } else {
-                  updateTimeline({ endDate: v });
-                }
+                updatePageTimeline(currentPageId, { endDate: v });
               }} />
           </div>
+          {hasPageTimeline && (
+            <div className="settings-row">
+              <button
+                onClick={() => clearPageTimeline(currentPageId)}
+                style={{
+                  fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
+                  border: '1px solid #999', borderRadius: '3px', background: 'transparent',
+                  color: 'inherit', width: '100%',
+                }}
+              >
+                グローバル設定に戻す
+              </button>
+            </div>
+          )}
         </>
       )}
 

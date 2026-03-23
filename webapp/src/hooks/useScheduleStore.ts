@@ -62,6 +62,7 @@ interface ScheduleState {
   // Page-specific timeline
   updatePageTimeline: (pageId: string, updates: { startDate?: string; endDate?: string }) => void;
   updatePageMonthWidth: (pageId: string, widthPx: number) => void;
+  clearPageTimeline: (pageId: string) => void;
   // Timeline
   updateMonthWidth: (widthPx: number) => void;
   // Connection operations
@@ -1026,6 +1027,23 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           draftPage.timeline = { startDate, endDate, monthWidthPx };
         }
         draftPage.timeline.monthWidthPx = Math.max(20, Math.min(120, widthPx));
+        draft.lastModified = new Date().toISOString();
+      });
+      scheduleAutoSave(get().saveData);
+      return { ...historyUpdate, data: newData, isDirty: true };
+    });
+  },
+
+  clearPageTimeline: (pageId) => {
+    set((state) => {
+      if (!state.data) return {};
+      const page = state.data.pages.find((p) => p.id === pageId);
+      if (!page || !page.timeline) return {};
+      const historyUpdate = pushHistory(state);
+      const newData = produce(state.data, (draft) => {
+        const draftPage = draft.pages.find((p) => p.id === pageId);
+        if (!draftPage) return;
+        draftPage.timeline = undefined;
         draft.lastModified = new Date().toISOString();
       });
       scheduleAutoSave(get().saveData);
