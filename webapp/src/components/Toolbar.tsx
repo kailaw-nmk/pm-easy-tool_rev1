@@ -8,6 +8,7 @@ import { ToolbarDropdown } from './ToolbarDropdown';
 import { HelpManual } from './HelpManual';
 import { FileMemoDialog } from './FileMemoDialog';
 import { ExportPageDialog } from './ExportPageDialog';
+import { BatchExportDialog } from './BatchExportDialog';
 import { ImportConflictDialog } from './ImportConflictDialog';
 import { LaneConflictDialog } from './LaneConflictDialog';
 import { getGanttContainer } from '../lib/gantt-refs';
@@ -20,7 +21,7 @@ import {
   MousePointerClick, MessageSquare, StickyNote, CalendarCheck, Grid3x3,
   Settings, HelpCircle, Moon, Sun, MoreHorizontal,
   RectangleHorizontal, Star, Rows3, LayoutList,
-  Upload, Download, Image, FileText, NotebookPen, Type, Crosshair,
+  Upload, Download, Image, Images, FileText, NotebookPen, Type, Crosshair,
 } from 'lucide-react';
 import type { ZoomLevel, DisplayMode, PartialScheduleExport, ConflictResolution, LaneConflict, LaneConflictResolution } from '../types/schedule';
 import { isDayBased } from '../lib/zoom';
@@ -33,6 +34,7 @@ export function Toolbar() {
   const [showLaneRegistry, setShowLaneRegistry] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showBatchExport, setShowBatchExport] = useState(false);
   const [showFileMemo, setShowFileMemo] = useState(false);
   const [pendingPartialImport, setPendingPartialImport] = useState<{
     data: PartialScheduleExport;
@@ -374,6 +376,7 @@ export function Toolbar() {
             { label: 'インポート', icon: <Upload size={14} />, onClick: () => fileInputRef.current?.click() },
             { label: 'エクスポート', icon: <Download size={14} />, onClick: () => setShowExportDialog(true) },
             { label: 'PNG', icon: <Image size={14} />, onClick: () => handleExport('png') },
+            { label: '一括PNG出力', icon: <Images size={14} />, onClick: () => setShowBatchExport(true) },
             { label: 'PDF', icon: <FileText size={14} />, onClick: () => handleExport('pdf') },
           ]}
         />
@@ -405,6 +408,10 @@ export function Toolbar() {
 
       {showExportDialog && (
         <ExportPageDialog onClose={() => setShowExportDialog(false)} />
+      )}
+
+      {showBatchExport && (
+        <BatchExportDialog onClose={() => setShowBatchExport(false)} />
       )}
 
       {showFileMemo && (
