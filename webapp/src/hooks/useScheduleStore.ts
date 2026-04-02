@@ -1300,7 +1300,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
-    const defaultName = `schedule_${yyyy}${mm}${dd}.json`;
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    const defaultName = `schedule_${yyyy}${mm}${dd}${hh}${mi}.json`;
     const uiState = useUIStore.getState();
     const exportData = {
       ...data,
@@ -1384,10 +1386,12 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
     const pageLabel = selectedPages.length === 1
       ? selectedPages[0].name.replace(/[\\/:*?"<>|]/g, '_')
       : `${selectedPages.length}pages`;
-    const defaultName = `schedule_partial_${pageLabel}_${yyyy}${mm}${dd}.json`;
+    const defaultName = `schedule_partial_${pageLabel}_${yyyy}${mm}${dd}${hh}${mi}.json`;
     const json = JSON.stringify(partial, null, 2);
 
     if ('showSaveFilePicker' in window) {
